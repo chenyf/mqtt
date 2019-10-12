@@ -7,9 +7,9 @@ import (
 	"time"
 
 	"github.com/chenyf/mqttapi/mqttp"
-	"github.com/chenyf/mqttapi/vlplugin"
-	"github.com/chenyf/mqttapi/vlplugin/vlpersistence"
-	"github.com/chenyf/mqttapi/vlsubscriber"
+	"github.com/chenyf/mqttapi/plugin"
+	"github.com/chenyf/mqttapi/plugin/persist"
+	"github.com/chenyf/mqttapi/subscriber"
 	"github.com/troian/healthcheck"
 	"go.uber.org/zap"
 
@@ -40,7 +40,7 @@ type Config struct {
 	Acceptor configuration.AcceptorConfig
 
 	// Configuration of persistence provider
-	Persistence vlpersistence.IFace
+	Persistence persist.IFace
 
 	// OnDuplicate notify if there is attempt connect client with id that already exists and active
 	// If not not set than defaults to mock function
@@ -93,7 +93,7 @@ type server struct {
 	}
 }
 
-var _ vlplugin.Messaging = (*server)(nil)
+var _ plugin.Messaging = (*server)(nil)
 
 // NewServer allocate server object
 func NewServer(config Config) (Server, error) {
@@ -118,7 +118,7 @@ func NewServer(config Config) (Server, error) {
 		return nil, errors.New("persistence provider cannot be nil")
 	}
 
-	var persisRetained vlpersistence.Retained
+	var persisRetained persist.Retained
 	var retains []types.RetainObject
 
 	if s.sysTree, retains, s.systree.publishes, err = systree.NewTree("$SYS/servers/" + s.NodeName); err != nil {
@@ -181,7 +181,7 @@ func NewServer(config Config) (Server, error) {
 }
 
 // GetSubscriber ...
-func (s *server) GetSubscriber(id string) (vlsubscriber.IFace, error) {
+func (s *server) GetSubscriber(id string) (subscriber.IFace, error) {
 	return s.sessionsMgr.GetSubscriber(id)
 }
 

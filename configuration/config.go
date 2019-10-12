@@ -5,13 +5,13 @@ import (
 	"io/ioutil"
 	"os"
 
-	"github.com/chenyf/mqttapi/vlplugin"
+	"github.com/chenyf/mqttapi/plugin"
 	"gopkg.in/yaml.v3"
 )
 
 // PluginState status
 type PluginState struct {
-	Plugin vlplugin.Plugin
+	Plugin plugin.Plugin
 	Errors []error
 }
 

@@ -5,7 +5,7 @@ import (
 	"regexp"
 
 	"github.com/chenyf/mqttapi/mqttp"
-	"github.com/chenyf/mqttapi/vlsubscriber"
+	"github.com/chenyf/mqttapi/subscriber"
 	"github.com/chenyf/mqtt/types"
 )
 
@@ -78,7 +78,7 @@ type Provider interface {
 type SubscribeReq struct {
 	Filter string
 	S      Subscriber
-	Params *vlsubscriber.SubscriptionParams
+	Params *subscriber.SubscriptionParams
 	Chan   chan SubscribeResp
 }
 

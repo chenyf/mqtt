@@ -11,13 +11,13 @@ import (
 	"time"
 	"unsafe"
 
-	"github.com/chenyf/mqttapi/vlplugin/vlpersistence"
+	"github.com/chenyf/mqttapi/plugin/persist"
 	"github.com/vbauerster/mpb/v4"
 	"github.com/vbauerster/mpb/v4/decor"
 
 	"github.com/chenyf/mqttapi/mqttp"
-	"github.com/chenyf/mqttapi/vlplugin/vlauth"
-	"github.com/chenyf/mqttapi/vlsubscriber"
+	apiauth "github.com/chenyf/mqttapi/plugin/auth"
+	apisubscriber "github.com/chenyf/mqttapi/subscriber"
 	"go.uber.org/zap"
 
 	"github.com/chenyf/mqtt/auth"
@@ -33,14 +33,14 @@ import (
 // load sessions owning subscriptions
 type subscriberConfig struct {
 	version mqttp.ProtocolVersion
-	topics  vlsubscriber.Subscriptions
+	topics  apisubscriber.Subscriptions
 }
 
 // Config manager configuration
 type Config struct {
 	configuration.MqttConfig
 	TopicsMgr        topicsTypes.Provider
-	Persist          vlpersistence.IFace
+	Persist          persist.IFace
 	Systree          systree.Provider
 	OnReplaceAttempt func(string, bool)
 	NodeName         string
@@ -53,13 +53,13 @@ type preloadConfig struct {
 
 // Manager clients manager
 type Manager struct {
-	persistence     vlpersistence.Sessions
+	persistence     persist.Sessions
 	log             *zap.SugaredLogger
 	quit            chan struct{}
 	sessionsCount   sync.WaitGroup
 	expiryCount     sync.WaitGroup
 	sessions        sync.Map
-	plSubscribers   map[string]vlsubscriber.IFace
+	plSubscribers   map[string]apisubscriber.IFace
 	allowedVersions map[mqttp.ProtocolVersion]bool
 	Config
 }
@@ -69,7 +69,7 @@ type StartConfig struct {
 	Req  *mqttp.Connect
 	Resp *mqttp.ConnAck
 	Conn net.Conn
-	Auth vlauth.Permissions
+	Auth apiauth.Permissions
 }
 
 type containerInfo struct {
@@ -106,7 +106,7 @@ func NewManager(c *Config) (*Manager, error) {
 			mqttp.ProtocolV311: false,
 			mqttp.ProtocolV50:  false,
 		},
-		plSubscribers: make(map[string]vlsubscriber.IFace),
+		plSubscribers: make(map[string]apisubscriber.IFace),
 	}
 
 	m.persistence, _ = c.Persist.Sessions()
@@ -245,7 +245,7 @@ func (m *Manager) Shutdown() error {
 }
 
 // GetSubscriber ...
-func (m *Manager) GetSubscriber(id string) (vlsubscriber.IFace, error) {
+func (m *Manager) GetSubscriber(id string) (apisubscriber.IFace, error) {
 	sub, ok := m.plSubscribers[id]
 
 	if !ok {
@@ -260,7 +260,7 @@ func (m *Manager) GetSubscriber(id string) (vlsubscriber.IFace, error) {
 }
 
 // LoadSession load persisted session. Invoked by persistence provider
-func (m *Manager) LoadSession(context interface{}, id []byte, state *vlpersistence.SessionState) error {
+func (m *Manager) LoadSession(context interface{}, id []byte, state *persist.SessionState) error {
 	sID := string(id)
 	ctx := context.(*loadContext)
 
@@ -290,7 +290,7 @@ func (m *Manager) LoadSession(context interface{}, id []byte, state *vlpersisten
 
 	if err = m.decodeSubscriber(ctx, sID, state.Subscriptions); err != nil {
 		m.log.Error("Decode subscriber", zap.String("ClientID", sID), zap.Error(err))
-		if err = m.persistence.SubscriptionsDelete(id); err != nil && err != vlpersistence.ErrNotFound {
+		if err = m.persistence.SubscriptionsDelete(id); err != nil && err != persist.ErrNotFound {
 			m.log.Error("Persisted subscriber delete", zap.Error(err))
 		}
 	}
@@ -388,7 +388,7 @@ func (m *Manager) processConnect(cn connection.Initial, params *connection.Conne
 	} else {
 		var reason mqttp.ReasonCode
 
-		if status := authMngr.Password(params.ID, string(params.Username), string(params.Password)); status == vlauth.StatusAllow {
+		if status := authMngr.Password(params.ID, string(params.Username), string(params.Password)); status == apiauth.StatusAllow {
 			reason = mqttp.CodeSuccess
 		} else {
 			reason = mqttp.CodeRefusedBadUsernameOrPassword
@@ -634,7 +634,7 @@ func (m *Manager) loadContainer(cn connection.Session, params *connection.Connec
 		})
 
 	if params.CleanStart {
-		if err = m.persistence.Delete([]byte(params.ID)); err != nil && err != vlpersistence.ErrNotFound {
+		if err = m.persistence.Delete([]byte(params.ID)); err != nil && err != persist.ErrNotFound {
 			m.log.Error("Couldn't wipe session", zap.String("clientId", params.ID), zap.Error(err))
 		} else {
 			err = nil
@@ -645,7 +645,7 @@ func (m *Manager) loadContainer(cn connection.Session, params *connection.Connec
 
 	if !persisted {
 		err = m.persistence.Create([]byte(params.ID),
-			&vlpersistence.SessionBase{
+			&persist.SessionBase{
 				Timestamp: time.Now().Format(time.RFC3339),
 				Version:   byte(params.Version),
 			})
@@ -744,7 +744,7 @@ func (m *Manager) connectionClosed(id string, reason mqttp.ReasonCode) {
 	m.Systree.Clients().Disconnected(id, reason)
 }
 
-func (m *Manager) subscriberShutdown(id string, sub vlsubscriber.IFace) {
+func (m *Manager) subscriberShutdown(id string, sub apisubscriber.IFace) {
 	sub.Offline(true)
 	if val, ok := m.sessions.Load(id); ok {
 		wrap := val.(*container)
@@ -872,7 +872,7 @@ func (m *Manager) processDelayedWills(ctx *loadContext) {
 }
 
 // decodeSessionExpiry
-func (m *Manager) decodeSessionExpiry(ctx *loadContext, id string, state *vlpersistence.SessionState) error {
+func (m *Manager) decodeSessionExpiry(ctx *loadContext, id string, state *persist.SessionState) error {
 	if state.Expire == nil {
 		return nil
 	}
@@ -884,7 +884,7 @@ func (m *Manager) decodeSessionExpiry(ctx *loadContext, id string, state *vlpers
 		since, err = time.Parse(time.RFC3339, state.Expire.Since)
 		if err != nil {
 			m.log.Error("parse expiration value", zap.String("clientId", id), zap.Error(err))
-			if e := m.persistence.SubscriptionsDelete([]byte(id)); e != nil && e != vlpersistence.ErrNotFound {
+			if e := m.persistence.SubscriptionsDelete([]byte(id)); e != nil && e != persist.ErrNotFound {
 				m.log.Error("Persisted subscriber delete", zap.Error(e))
 			}
 
@@ -920,7 +920,7 @@ func (m *Manager) decodeSessionExpiry(ctx *loadContext, id string, state *vlpers
 
 			if time.Now().After(expireAt) {
 				// persisted session has expired, wipe it
-				if err = m.persistence.Delete([]byte(id)); err != nil && err != vlpersistence.ErrNotFound {
+				if err = m.persistence.Delete([]byte(id)); err != nil && err != persist.ErrNotFound {
 					m.log.Error("Delete expired session", zap.Error(err))
 				}
 				return nil
@@ -976,7 +976,7 @@ func (m *Manager) decodeSubscriber(ctx *loadContext, id string, from []byte) err
 		return nil
 	}
 
-	subscriptions := vlsubscriber.Subscriptions{}
+	subscriptions := apisubscriber.Subscriptions{}
 	offset := 0
 	version := mqttp.ProtocolVersion(from[offset])
 	offset++
@@ -989,7 +989,7 @@ func (m *Manager) decodeSubscriber(ctx *loadContext, id string, from []byte) err
 
 		offset += total
 
-		params := &vlsubscriber.SubscriptionParams{}
+		params := &apisubscriber.SubscriptionParams{}
 
 		params.Ops = mqttp.SubscriptionOptions(from[offset])
 		offset++
@@ -1054,7 +1054,7 @@ func (m *Manager) persistSubscriber(s *subscriber.Type) error {
 }
 
 func (m *Manager) sessionPersistPublish(id string, p *mqttp.Publish) {
-	pkt := &vlpersistence.PersistedPacket{}
+	pkt := &persist.PersistedPacket{}
 
 	var expired bool
 	var expireAt time.Time

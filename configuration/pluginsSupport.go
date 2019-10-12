@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"plugin"
 
-	"github.com/chenyf/mqttapi/vlplugin"
+	apiplugin "github.com/chenyf/mqttapi/plugin"
 )
 
 // LoadPlugins load plugins from path
@@ -39,7 +39,7 @@ func LoadPlugins(path string, list []string) map[string]PluginState {
 			if sym, err = plEntry.Lookup("Plugin"); err != nil {
 				pl.Errors = append(pl.Errors, err)
 			} else {
-				pl.Plugin = sym.(vlplugin.Plugin)
+				pl.Plugin = sym.(apiplugin.Plugin)
 			}
 		}
 		plugins[p] = pl

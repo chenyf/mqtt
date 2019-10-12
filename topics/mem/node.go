@@ -4,7 +4,7 @@ import (
 	"strings"
 
 	"github.com/chenyf/mqttapi/mqttp"
-	"github.com/chenyf/mqttapi/vlsubscriber"
+	"github.com/chenyf/mqttapi/subscriber"
 
 	"github.com/chenyf/mqtt/systree"
 	topicsTypes "github.com/chenyf/mqtt/topics/types"
@@ -13,7 +13,7 @@ import (
 
 type topicSubscriber struct {
 	s topicsTypes.Subscriber
-	p *vlsubscriber.SubscriptionParams
+	p *subscriber.SubscriptionParams
 }
 
 type subscribers map[uintptr]*topicSubscriber
@@ -102,7 +102,7 @@ func (mT *provider) leafSearchNode(levels []string) *node {
 	return root
 }
 
-func (mT *provider) subscriptionInsert(filter string, sub topicsTypes.Subscriber, p *vlsubscriber.SubscriptionParams) bool {
+func (mT *provider) subscriptionInsert(filter string, sub topicsTypes.Subscriber, p *subscriber.SubscriptionParams) bool {
 	levels := strings.Split(filter, "/")
 
 	root := mT.leafInsertNode(levels)

@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/chenyf/mqttapi/mqttp"
-	"github.com/chenyf/mqttapi/vlplugin/vlpersistence"
+	"github.com/chenyf/mqttapi/plugin/persist"
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
 
@@ -27,7 +27,7 @@ type writer struct {
 	onConnectionClose signalConnectionClose
 	conn              transport.Conn
 	metric            systree.PacketsMetric
-	persist           vlpersistence.Packets
+	persist           persist.Packets
 	flow              flow
 	pubOut            ackQueue
 	gMessages         *types.Queue
@@ -124,7 +124,7 @@ func (s *writer) start(start bool) {
 	})
 }
 
-func (s *writer) packetLoader(c interface{}, entry *vlpersistence.PersistedPacket) (bool, error) {
+func (s *writer) packetLoader(c interface{}, entry *persist.PersistedPacket) (bool, error) {
 	ctx := c.(*packetLoaderCtx)
 
 	var e error
@@ -468,8 +468,8 @@ func (s *writer) onReleaseOut(o, n mqttp.IFace) {
 	}
 }
 
-func (s *writer) encodeForPersistence(pkt mqttp.IFace) *vlpersistence.PersistedPacket {
-	pPkt := &vlpersistence.PersistedPacket{}
+func (s *writer) encodeForPersistence(pkt mqttp.IFace) *persist.PersistedPacket {
+	pPkt := &persist.PersistedPacket{}
 
 	switch tp := pkt.(type) {
 	case *mqttp.Publish:
@@ -501,12 +501,12 @@ func (s *writer) encodeForPersistence(pkt mqttp.IFace) *vlpersistence.PersistedP
 	return nil
 }
 
-func (s *writer) getQueuedPackets() vlpersistence.PersistedPackets {
-	var packets vlpersistence.PersistedPackets
+func (s *writer) getQueuedPackets() persist.PersistedPackets {
+	var packets persist.PersistedPackets
 
-	packetEncode := func(p interface{}) *vlpersistence.PersistedPacket {
+	packetEncode := func(p interface{}) *persist.PersistedPacket {
 		var pkt mqttp.IFace
-		pPkt := &vlpersistence.PersistedPacket{}
+		pPkt := &persist.PersistedPacket{}
 
 		switch tp := p.(type) {
 		case *mqttp.Publish:

@@ -4,19 +4,19 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/chenyf/mqttapi/vlplugin/vlauth"
+	"github.com/chenyf/mqttapi/plugin/auth"
 )
 
 // Manager auth
 type Manager struct {
-	p         []vlauth.IFace
+	p         []auth.IFace
 	anonymous bool
 }
 
-var providers = make(map[string]vlauth.IFace)
+var providers = make(map[string]auth.IFace)
 
 // Register auth provider
-func Register(name string, i vlauth.IFace) error {
+func Register(name string, i auth.IFace) error {
 	if name == "" && i == nil {
 		return errors.New("invalid args")
 	}
@@ -56,34 +56,34 @@ func NewManager(p []string, allowAnonymous bool) (*Manager, error) {
 // AllowAnonymous allow anonymous connections
 func (m *Manager) AllowAnonymous() error {
 	if m.anonymous {
-		return vlauth.StatusAllow
+		return auth.StatusAllow
 	}
 
-	return vlauth.StatusDeny
+	return auth.StatusDeny
 }
 
 // Password authentication
 func (m *Manager) Password(clientID, user, password string) error {
 	if user == "" && m.anonymous {
-		return vlauth.StatusAllow
+		return auth.StatusAllow
 	} else {
 		for _, p := range m.p {
-			if status := p.Password(clientID, user, password); status == vlauth.StatusAllow {
+			if status := p.Password(clientID, user, password); status == auth.StatusAllow {
 				return status
 			}
 		}
 	}
 
-	return vlauth.StatusDeny
+	return auth.StatusDeny
 }
 
 // ACL check permissions
-func (m *Manager) ACL(clientID, user, topic string, access vlauth.AccessType) error {
+func (m *Manager) ACL(clientID, user, topic string, access auth.AccessType) error {
 	for _, p := range m.p {
-		if status := p.ACL(clientID, user, topic, access); status == vlauth.StatusAllow {
+		if status := p.ACL(clientID, user, topic, access); status == auth.StatusAllow {
 			return status
 		}
 	}
 
-	return vlauth.StatusDeny
+	return auth.StatusDeny
 }

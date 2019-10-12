@@ -13,11 +13,11 @@ import (
 	"sync"
 	"syscall"
 
-	"github.com/chenyf/mqttapi/vlplugin"
-	"github.com/chenyf/mqttapi/vlplugin/vlauth"
-	"github.com/chenyf/mqttapi/vlplugin/vlpersistence"
-	persistenceMem "github.com/chenyf/mqttapi/vlplugin/vlpersistence/mem"
-	"github.com/chenyf/mqttapi/vltypes"
+	"github.com/chenyf/mqttapi/plugin"
+	apiauth "github.com/chenyf/mqttapi/plugin/auth"
+	"github.com/chenyf/mqttapi/plugin/persist"
+	persistenceMem "github.com/chenyf/mqttapi/plugin/persist/mem"
+	apitypes "github.com/chenyf/mqttapi/types"
 	"github.com/troian/healthcheck"
 	"go.uber.org/zap"
 	"gopkg.in/yaml.v3"
@@ -28,7 +28,7 @@ import (
 	"github.com/chenyf/mqtt/transport"
 )
 
-type pluginType map[string]vlplugin.Plugin
+type pluginType map[string]plugin.Plugin
 
 type pluginTypes map[string]pluginType
 
@@ -187,7 +187,7 @@ func (ctx *appContext) loadPlugins(cfg *configuration.PluginsConfig) error {
 					"\n\t\t        Description: ", pl.Plugin.Info().Desc(),
 					"\n\t\t               Name: ", pl.Plugin.Info().Name())
 				if _, ok := plTypes[pl.Plugin.Info().Type()]; !ok {
-					plTypes[pl.Plugin.Info().Type()] = make(map[string]vlplugin.Plugin)
+					plTypes[pl.Plugin.Info().Type()] = make(map[string]plugin.Plugin)
 				}
 
 				plTypes[pl.Plugin.Info().Type()][pl.Plugin.Info().Name()] = pl.Plugin
@@ -199,10 +199,10 @@ func (ctx *appContext) loadPlugins(cfg *configuration.PluginsConfig) error {
 	return nil
 }
 
-func configureSimpleAuth(cfg interface{}) (vlauth.IFace, error) {
+func configureSimpleAuth(cfg interface{}) (apiauth.IFace, error) {
 	sAuth := newSimpleAuth()
 
-	authConfig, err := vltypes.NormalizeConfig(cfg)
+	authConfig, err := apitypes.NormalizeConfig(cfg)
 	if err != nil {
 		return nil, err
 	}
@@ -257,7 +257,7 @@ func (ctx *appContext) loadAuth(cfg *configuration.Config) (*auth.Manager, error
 	}
 
 	for idx, cfgEntry := range a.([]interface{}) {
-		entry, err := vltypes.NormalizeConfig(cfgEntry)
+		entry, err := apitypes.NormalizeConfig(cfgEntry)
 		if err != nil {
 			return nil, err
 		}
@@ -278,7 +278,7 @@ func (ctx *appContext) loadAuth(cfg *configuration.Config) (*auth.Manager, error
 			logger.Fatalf("\tplugins.config.auth[%d] must contain map \"config\"", idx)
 		}
 
-		var iface vlauth.IFace
+		var iface apiauth.IFace
 
 		switch backend {
 		case "simpleAuth":
@@ -293,7 +293,7 @@ func (ctx *appContext) loadAuth(cfg *configuration.Config) (*auth.Manager, error
 						return nil, errors.New("")
 					}
 
-					iface = plObject.(vlauth.IFace)
+					iface = plObject.(apiauth.IFace)
 				} else {
 					logger.Warnf("\tno enabled plugin of type [%s] for config [%s]", backend, name)
 				}
@@ -327,7 +327,7 @@ func (ctx *appContext) configureDebugPlugins(cfg interface{}) error {
 	logger.Info("configuring debug plugins")
 
 	for idx, cfgEntry := range cfg.([]interface{}) {
-		entry, err := vltypes.NormalizeConfig(cfgEntry)
+		entry, err := apitypes.NormalizeConfig(cfgEntry)
 		if err != nil {
 			return err
 		}
@@ -365,7 +365,7 @@ func (ctx *appContext) configureHealthPlugins(cfg interface{}) error {
 	logger.Info("configuring health plugins")
 
 	for idx, cfgEntry := range cfg.([]interface{}) {
-		entry, err := vltypes.NormalizeConfig(cfgEntry)
+		entry, err := apitypes.NormalizeConfig(cfgEntry)
 		if err != nil {
 			return err
 		}
@@ -417,13 +417,13 @@ func (ctx *appContext) configureHealthPlugins(cfg interface{}) error {
 	return nil
 }
 
-func (ctx *appContext) loadPersistence(cfg interface{}) (vlpersistence.IFace, error) {
-	var persist vlpersistence.IFace
+func (ctx *appContext) loadPersistence(cfg interface{}) (persist.IFace, error) {
+	var p persist.IFace
 
 	logger.Info("loading persistence")
 	if cfg == nil {
 		logger.Warn("\tno persistence backend provided\n\tusing in-memory. Data will be lost on shutdown")
-		persist, _ = persistenceMem.Load(nil, nil)
+		p, _ = persistenceMem.Load(nil, nil)
 	} else {
 		var backend string
 		var config interface{}
@@ -434,7 +434,7 @@ func (ctx *appContext) loadPersistence(cfg interface{}) (vlpersistence.IFace, er
 			return nil, errors.New("")
 		}
 
-		persistenceConfig, err := vltypes.NormalizeConfig(persistenceConfigs[0])
+		persistenceConfig, err := apitypes.NormalizeConfig(persistenceConfigs[0])
 		if err != nil {
 			return nil, err
 		}
@@ -463,7 +463,7 @@ func (ctx *appContext) loadPersistence(cfg interface{}) (vlpersistence.IFace, er
 
 				logger.Infof("\tusing persistence provider [%s]", backend)
 
-				persist = plObject.(vlpersistence.IFace)
+				p = plObject.(persist.IFace)
 			}
 		} else {
 			logger.Fatal("no plugins loaded")
@@ -471,13 +471,13 @@ func (ctx *appContext) loadPersistence(cfg interface{}) (vlpersistence.IFace, er
 		}
 	}
 
-	return persist, nil
+	return p, nil
 }
 
-func (ctx *appContext) configurePlugin(pl vlplugin.Plugin, c interface{}) (interface{}, error) {
+func (ctx *appContext) configurePlugin(pl plugin.Plugin, c interface{}) (interface{}, error) {
 	name := "plugin." + pl.Info().Type() + "." + pl.Info().Name()
 
-	sysParams := &vlplugin.SysParams{
+	sysParams := &plugin.SysParams{
 		HTTP:          ctx,
 		Health:        ctx,
 		SignalFailure: pluginFailureSignal,
@@ -497,7 +497,7 @@ func (ctx *appContext) configurePlugin(pl vlplugin.Plugin, c interface{}) (inter
 }
 
 // GetHTTPServer ...
-func (ctx *appContext) GetHTTPServer(port string) vlplugin.HTTPHandler {
+func (ctx *appContext) GetHTTPServer(port string) plugin.HTTPHandler {
 	if port == "" {
 		port = ctx.httpDefaultMux
 	}
@@ -611,7 +611,7 @@ func main() {
 	logger.Info("working directory: ", configuration.WorkDir)
 	logger.Info("plugins directory: ", configuration.PluginsDir)
 
-	var persist vlpersistence.IFace
+	var persist persist.IFace
 	var defaultAuth *auth.Manager
 	var err error
 

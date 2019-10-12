@@ -19,7 +19,7 @@ import (
 	"time"
 
 	"github.com/chenyf/mqttapi/mqttp"
-	"github.com/chenyf/mqttapi/vlplugin/vlpersistence"
+	"github.com/chenyf/mqttapi/plugin/persist"
 	"go.uber.org/zap"
 
 	"github.com/chenyf/mqtt/configuration"
@@ -32,7 +32,7 @@ type provider struct {
 	// smu                sync.RWMutex
 	root               *node
 	stat               systree.TopicsStat
-	persist            vlpersistence.Retained
+	persist            persist.Retained
 	log                *zap.SugaredLogger
 	wgPublisher        sync.WaitGroup
 	wgPublisherStarted sync.WaitGroup
@@ -73,7 +73,7 @@ func NewMemProvider(config *topicsTypes.MemConfig) (topicsTypes.Provider, error)
 
 	if p.persist != nil {
 		entries, err := p.persist.Load()
-		if err != nil && err != vlpersistence.ErrNotFound {
+		if err != nil && err != persist.ErrNotFound {
 			return nil, err
 		}
 
@@ -203,7 +203,7 @@ func (mT *provider) Shutdown() error {
 		mT.retainSearch("#", &res)
 		mT.retainSearch("/#", &res)
 
-		var encoded []*vlpersistence.PersistedPacket
+		var encoded []*persist.PersistedPacket
 
 		for _, pkt := range res {
 			// Discard retained expired and QoS0 messages
@@ -211,7 +211,7 @@ func (mT *provider) Shutdown() error {
 				if buf, err := mqttp.Encode(pkt); err != nil {
 					mT.log.Error("Couldn't encode retained message", zap.Error(err))
 				} else {
-					entry := &vlpersistence.PersistedPacket{
+					entry := &persist.PersistedPacket{
 						Data: buf,
 					}
 					if !expireAt.IsZero() {

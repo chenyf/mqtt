@@ -26,8 +26,8 @@ import (
 	"time"
 
 	"github.com/chenyf/mqttapi/mqttp"
-	"github.com/chenyf/mqttapi/vlplugin/vlauth"
-	"github.com/chenyf/mqttapi/vlplugin/vlpersistence"
+	"github.com/chenyf/mqttapi/plugin/auth"
+	"github.com/chenyf/mqttapi/plugin/persist"
 	"go.uber.org/zap"
 
 	"github.com/chenyf/mqtt/configuration"
@@ -111,7 +111,7 @@ type signalIncoming func(mqttp.IFace) error
 // DisconnectParams session state when stopped
 type DisconnectParams struct {
 	Reason  mqttp.ReasonCode
-	Packets vlpersistence.PersistedPackets
+	Packets persist.PersistedPackets
 }
 
 // Callbacks provided by sessions manager to signal session state
@@ -170,7 +170,7 @@ type impl struct {
 	id               string
 	conn             transport.Conn
 	metric           systree.PacketsMetric
-	permissions      vlauth.Permissions
+	permissions      auth.Permissions
 	signalAuth       OnAuthCb
 	onConnClose      func(error)
 	callStop         func(error) bool
@@ -830,7 +830,7 @@ func (s *impl) onPublish(pkt *mqttp.Publish) (mqttp.IFace, error) {
 	//   - ignore the message but send acks
 	//   - return error leading to disconnect
 	// TODO: publish permissions
-	if e := s.permissions.ACL(s.id, "", pkt.Topic(), vlauth.AccessWrite); e != vlauth.StatusAllow {
+	if e := s.permissions.ACL(s.id, "", pkt.Topic(), auth.AccessWrite); e != auth.StatusAllow {
 		reason = mqttp.CodeRefusedNotAuthorized
 	}
 

@@ -5,9 +5,9 @@ import (
 	"time"
 
 	"github.com/chenyf/mqttapi/mqttp"
-	"github.com/chenyf/mqttapi/vlplugin/vlauth"
-	"github.com/chenyf/mqttapi/vlplugin/vlpersistence"
-	"github.com/chenyf/mqttapi/vlsubscriber"
+	"github.com/chenyf/mqttapi/plugin/auth"
+	"github.com/chenyf/mqttapi/plugin/persist"
+	"github.com/chenyf/mqttapi/subscriber"
 	"go.uber.org/zap"
 
 	"github.com/chenyf/mqtt/configuration"
@@ -18,7 +18,7 @@ import (
 type sessionEvents interface {
 	sessionOffline(string, bool, *expiryConfig)
 	connectionClosed(string, mqttp.ReasonCode)
-	subscriberShutdown(string, vlsubscriber.IFace)
+	subscriberShutdown(string, subscriber.IFace)
 }
 
 type sessionPreConfig struct {
@@ -26,14 +26,14 @@ type sessionPreConfig struct {
 	createdAt   time.Time
 	messenger   types.TopicMessenger
 	conn        connection.Session
-	persistence vlpersistence.Packets
-	permissions vlauth.Permissions
+	persistence persist.Packets
+	permissions auth.Permissions
 	username    string
 }
 
 type sessionConfig struct {
 	sessionEvents
-	subscriber          vlsubscriber.IFace
+	subscriber          subscriber.IFace
 	will                *mqttp.Publish
 	expireIn            *uint32
 	durable             bool
@@ -144,8 +144,8 @@ func (s *session) SignalSubscribe(pkt *mqttp.Subscribe) (mqttp.IFace, error) {
 
 	err = pkt.ForEachTopic(func(t *mqttp.Topic) error {
 		var reason mqttp.ReasonCode
-		if e := s.permissions.ACL(s.id, s.username, t.Filter(), vlauth.AccessRead); e == vlauth.StatusAllow {
-			params := vlsubscriber.SubscriptionParams{
+		if e := s.permissions.ACL(s.id, s.username, t.Filter(), auth.AccessRead); e == auth.StatusAllow {
+			params := subscriber.SubscriptionParams{
 				ID:  subsID,
 				Ops: t.Ops(),
 			}
@@ -202,7 +202,7 @@ func (s *session) SignalUnSubscribe(pkt *mqttp.UnSubscribe) (mqttp.IFace, error)
 
 	_ = pkt.ForEachTopic(func(t *mqttp.Topic) error {
 		reason := mqttp.CodeSuccess
-		if e := s.permissions.ACL(s.id, s.username, t.Full(), vlauth.AccessRead); e == vlauth.StatusAllow {
+		if e := s.permissions.ACL(s.id, s.username, t.Full(), auth.AccessRead); e == auth.StatusAllow {
 			if e = s.subscriber.UnSubscribe(t.Full()); e != nil {
 				s.log.Error("unsubscribe from topic", zap.String("clientId", s.id), zap.Error(e))
 				reason = mqttp.CodeNoSubscriptionExisted

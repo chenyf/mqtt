@@ -2,7 +2,7 @@ package topicsTypes
 
 import (
 	"github.com/chenyf/mqttapi/mqttp"
-	"github.com/chenyf/mqttapi/vlplugin/vlpersistence"
+	"github.com/chenyf/mqttapi/plugin/persist"
 	"github.com/chenyf/mqtt/systree"
 )
 
@@ -12,7 +12,7 @@ type ProviderConfig interface{}
 // MemConfig of topics manager
 type MemConfig struct {
 	Stat                     systree.TopicsStat
-	Persist                  vlpersistence.Retained
+	Persist                  persist.Retained
 	OnCleanUnsubscribe       func([]string)
 	Name                     string
 	MaxQos                   mqttp.QosType

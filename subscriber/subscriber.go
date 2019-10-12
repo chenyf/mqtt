@@ -7,7 +7,7 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/chenyf/mqttapi/mqttp"
-	"github.com/chenyf/mqttapi/vlsubscriber"
+	"github.com/chenyf/mqttapi/subscriber"
 
 	"github.com/chenyf/mqtt/configuration"
 	topicsTypes "github.com/chenyf/mqtt/topics/types"
@@ -16,16 +16,16 @@ import (
 // Config subscriber config options
 type Config struct {
 	ID             string
-	OfflinePublish vlsubscriber.Publisher
+	OfflinePublish subscriber.Publisher
 	Topics         topicsTypes.SubscriberInterface
 	Version        mqttp.ProtocolVersion
 }
 
 // Type subscriber object
 type Type struct {
-	subscriptions vlsubscriber.Subscriptions
+	subscriptions subscriber.Subscriptions
 	lock          sync.RWMutex
-	publisher     vlsubscriber.Publisher
+	publisher     subscriber.Publisher
 	log           *zap.SugaredLogger
 	access        sync.WaitGroup
 	subSignal     chan topicsTypes.SubscribeResp
@@ -33,12 +33,12 @@ type Type struct {
 	Config
 }
 
-var _ vlsubscriber.IFace = (*Type)(nil)
+var _ subscriber.IFace = (*Type)(nil)
 
 // New allocate new subscriber
 func New(c Config) *Type {
 	p := &Type{
-		subscriptions: make(vlsubscriber.Subscriptions),
+		subscriptions: make(subscriber.Subscriptions),
 		Config:        c,
 		log:           configuration.GetLogger().Named("subscriber"),
 		subSignal:     make(chan topicsTypes.SubscribeResp),
@@ -82,12 +82,12 @@ func (s *Type) GetVersion() mqttp.ProtocolVersion {
 }
 
 // Subscriptions list active subscriptions
-func (s *Type) Subscriptions() vlsubscriber.Subscriptions {
+func (s *Type) Subscriptions() subscriber.Subscriptions {
 	return s.subscriptions
 }
 
 // Subscribe to given topic
-func (s *Type) Subscribe(topic string, params *vlsubscriber.SubscriptionParams) ([]*mqttp.Publish, error) {
+func (s *Type) Subscribe(topic string, params *subscriber.SubscriptionParams) ([]*mqttp.Publish, error) {
 	resp := s.Topics.Subscribe(topicsTypes.SubscribeReq{
 		Filter: topic,
 		Params: params,
@@ -169,7 +169,7 @@ func (s *Type) Publish(p *mqttp.Publish, grantedQoS mqttp.QosType, ops mqttp.Sub
 
 // Online moves subscriber to online state
 // since this moment all of publishes are forwarded to provided callback
-func (s *Type) Online(c vlsubscriber.Publisher) {
+func (s *Type) Online(c subscriber.Publisher) {
 	s.lock.Lock()
 	s.publisher = c
 	s.lock.Unlock()

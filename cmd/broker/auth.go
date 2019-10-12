@@ -4,14 +4,14 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 
-	"github.com/chenyf/mqttapi/vlplugin/vlauth"
+	"github.com/chenyf/mqttapi/plugin/auth"
 )
 
 type simpleAuth struct {
 	creds map[string]string
 }
 
-var _ vlauth.IFace = (*simpleAuth)(nil)
+var _ auth.IFace = (*simpleAuth)(nil)
 
 func newSimpleAuth() *simpleAuth {
 	return &simpleAuth{
@@ -28,14 +28,14 @@ func (a *simpleAuth) Password(clientID, user, password string) error {
 		algo := sha256.New()
 		algo.Write([]byte(password))
 		if hex.EncodeToString(algo.Sum(nil)) == hash {
-			return vlauth.StatusAllow
+			return auth.StatusAllow
 		}
 	}
-	return vlauth.StatusDeny
+	return auth.StatusDeny
 }
 
-func (a *simpleAuth) ACL(clientID, user, topic string, access vlauth.AccessType) error {
-	return vlauth.StatusAllow
+func (a *simpleAuth) ACL(clientID, user, topic string, access auth.AccessType) error {
+	return auth.StatusAllow
 }
 
 func (a *simpleAuth) Shutdown() error {

@@ -5,8 +5,8 @@ import (
 	"time"
 
 	"github.com/chenyf/mqttapi/mqttp"
-	"github.com/chenyf/mqttapi/vlplugin/vlauth"
-	"github.com/chenyf/mqttapi/vlplugin/vlpersistence"
+	"github.com/chenyf/mqttapi/plugin/auth"
+	"github.com/chenyf/mqttapi/plugin/persist"
 	"github.com/chenyf/mqtt/systree"
 	"github.com/chenyf/mqtt/transport"
 )
@@ -129,13 +129,13 @@ func AttachSession(val SessionCallbacks) Option {
 	}
 }
 
-func Persistence(val vlpersistence.Packets) Option {
+func Persistence(val persist.Packets) Option {
 	return func(t *impl) error {
 		return wrPersistence(val)(t.tx)
 	}
 }
 
-func Permissions(val vlauth.Permissions) Option {
+func Permissions(val auth.Permissions) Option {
 	return func(t *impl) error {
 		t.permissions = val
 		return nil

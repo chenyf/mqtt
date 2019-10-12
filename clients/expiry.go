@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/chenyf/mqttapi/mqttp"
-	"github.com/chenyf/mqttapi/vlplugin/vlpersistence"
+	"github.com/chenyf/mqttapi/plugin/persist"
 
 	"github.com/chenyf/mqtt/types"
 )
@@ -79,8 +79,8 @@ func (s *expiry) cancel() bool {
 	return res
 }
 
-func (s *expiry) persistedState() *vlpersistence.SessionDelays {
-	exp := &vlpersistence.SessionDelays{
+func (s *expiry) persistedState() *persist.SessionDelays {
+	exp := &persist.SessionDelays{
 		Since: s.expiringSince.Format(time.RFC3339),
 	}
 

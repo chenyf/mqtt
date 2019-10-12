@@ -2,7 +2,7 @@ package connection
 
 import (
 	"github.com/chenyf/mqttapi/mqttp"
-	"github.com/chenyf/mqttapi/vlplugin/vlpersistence"
+	"github.com/chenyf/mqttapi/plugin/persist"
 	"go.uber.org/zap"
 
 	"github.com/chenyf/mqtt/systree"
@@ -47,7 +47,7 @@ func wrMetric(val systree.PacketsMetric) writerOption {
 	}
 }
 
-func wrPersistence(val vlpersistence.Packets) writerOption {
+func wrPersistence(val persist.Packets) writerOption {
 	return func(t *writer) error {
 		t.persist = val
 		return nil
