@@ -7,11 +7,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/VolantMQ/vlapi/mqttp"
+	"github.com/chenyf/mqttapi/mqttp"
 	"go.uber.org/zap"
 
-	"github.com/VolantMQ/volantmq/systree"
-	"github.com/VolantMQ/volantmq/transport"
+	"github.com/chenyf/mqtt/systree"
+	"github.com/chenyf/mqtt/transport"
 )
 
 type reader struct {

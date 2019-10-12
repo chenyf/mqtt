@@ -4,15 +4,15 @@ import (
 	"sync"
 	"time"
 
-	"github.com/VolantMQ/vlapi/mqttp"
-	"github.com/VolantMQ/vlapi/vlplugin/vlauth"
-	"github.com/VolantMQ/vlapi/vlplugin/vlpersistence"
-	"github.com/VolantMQ/vlapi/vlsubscriber"
+	"github.com/chenyf/mqttapi/mqttp"
+	"github.com/chenyf/mqttapi/vlplugin/vlauth"
+	"github.com/chenyf/mqttapi/vlplugin/vlpersistence"
+	"github.com/chenyf/mqttapi/vlsubscriber"
 	"go.uber.org/zap"
 
-	"github.com/VolantMQ/volantmq/configuration"
-	"github.com/VolantMQ/volantmq/connection"
-	"github.com/VolantMQ/volantmq/types"
+	"github.com/chenyf/mqtt/configuration"
+	"github.com/chenyf/mqtt/connection"
+	"github.com/chenyf/mqtt/types"
 )
 
 type sessionEvents interface {

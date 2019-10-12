@@ -1,8 +1,8 @@
 package systree
 
 import (
-	"github.com/VolantMQ/vlapi/mqttp"
-	"github.com/VolantMQ/volantmq/types"
+	"github.com/chenyf/mqttapi/mqttp"
+	"github.com/chenyf/mqtt/types"
 )
 
 // Provider systree provider

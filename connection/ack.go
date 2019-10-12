@@ -3,7 +3,7 @@ package connection
 import (
 	"sync"
 
-	"github.com/VolantMQ/vlapi/mqttp"
+	"github.com/chenyf/mqttapi/mqttp"
 )
 
 type onRelease func(o, n mqttp.IFace)

@@ -3,8 +3,8 @@ package systree
 import (
 	"encoding/json"
 
-	"github.com/VolantMQ/vlapi/mqttp"
-	"github.com/VolantMQ/volantmq/types"
+	"github.com/chenyf/mqttapi/mqttp"
+	"github.com/chenyf/mqtt/types"
 )
 
 type server struct {

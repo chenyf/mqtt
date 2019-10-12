@@ -4,7 +4,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 
-	"github.com/VolantMQ/vlapi/vlplugin/vlauth"
+	"github.com/chenyf/mqttapi/vlplugin/vlauth"
 )
 
 type simpleAuth struct {

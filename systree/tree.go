@@ -1,7 +1,7 @@
 package systree
 
 import (
-	"github.com/VolantMQ/volantmq/types"
+	"github.com/chenyf/mqtt/types"
 )
 
 type impl struct {

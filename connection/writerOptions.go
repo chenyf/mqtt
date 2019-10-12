@@ -1,12 +1,12 @@
 package connection
 
 import (
-	"github.com/VolantMQ/vlapi/mqttp"
-	"github.com/VolantMQ/vlapi/vlplugin/vlpersistence"
+	"github.com/chenyf/mqttapi/mqttp"
+	"github.com/chenyf/mqttapi/vlplugin/vlpersistence"
 	"go.uber.org/zap"
 
-	"github.com/VolantMQ/volantmq/systree"
-	"github.com/VolantMQ/volantmq/transport"
+	"github.com/chenyf/mqtt/systree"
+	"github.com/chenyf/mqtt/transport"
 )
 
 func (s *writer) setOptions(opts ...writerOption) error {

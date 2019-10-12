@@ -5,8 +5,8 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/VolantMQ/vlapi/mqttp"
-	"github.com/VolantMQ/volantmq/types"
+	"github.com/chenyf/mqttapi/mqttp"
+	"github.com/chenyf/mqtt/types"
 )
 
 // ClientConnectStatus is argument to client connected state

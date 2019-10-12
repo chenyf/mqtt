@@ -4,10 +4,9 @@ import (
 	"errors"
 	"regexp"
 
-	"github.com/VolantMQ/vlapi/mqttp"
-	"github.com/VolantMQ/vlapi/vlsubscriber"
-
-	"github.com/VolantMQ/volantmq/types"
+	"github.com/chenyf/mqttapi/mqttp"
+	"github.com/chenyf/mqttapi/vlsubscriber"
+	"github.com/chenyf/mqtt/types"
 )
 
 const (

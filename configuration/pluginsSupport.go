@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"plugin"
 
-	"github.com/VolantMQ/vlapi/vlplugin"
+	"github.com/chenyf/mqttapi/vlplugin"
 )
 
 // LoadPlugins load plugins from path

@@ -4,12 +4,11 @@ import (
 	"errors"
 	"time"
 
-	"github.com/VolantMQ/vlapi/mqttp"
-	"github.com/VolantMQ/vlapi/vlplugin/vlauth"
-	"github.com/VolantMQ/vlapi/vlplugin/vlpersistence"
-
-	"github.com/VolantMQ/volantmq/systree"
-	"github.com/VolantMQ/volantmq/transport"
+	"github.com/chenyf/mqttapi/mqttp"
+	"github.com/chenyf/mqttapi/vlplugin/vlauth"
+	"github.com/chenyf/mqttapi/vlplugin/vlpersistence"
+	"github.com/chenyf/mqtt/systree"
+	"github.com/chenyf/mqtt/transport"
 )
 
 // OnAuthCb ...

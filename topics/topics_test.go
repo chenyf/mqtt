@@ -7,8 +7,8 @@ import (
 	"github.com/VolantMQ/vlapi/vlsubscriber"
 	"github.com/stretchr/testify/require"
 
-	"github.com/VolantMQ/volantmq/subscriber"
-	topicsTypes "github.com/VolantMQ/volantmq/topics/types"
+	"github.com/chenyf/mqtt/subscriber"
+	topicsTypes "github.com/chenyf/mqtt/topics/types"
 )
 
 type providerTest struct {

@@ -5,7 +5,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/VolantMQ/vlapi/mqttp"
+	"github.com/chenyf/mqttapi/mqttp"
 )
 
 // DynamicValue interface describes states of the dynamic value

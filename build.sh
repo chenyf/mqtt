@@ -10,8 +10,8 @@ mkdir -p $VOLANTMQ_WORK_DIR/bin
 mkdir -p $VOLANTMQ_WORK_DIR/conf
 mkdir -p $VOLANTMQ_PLUGINS_DIR
 
-cd $GOPATH/src/github.com/chenyf/mqtt/cmd/mqtt \
-    && govvv build $VOLANTMQ_BUILD_FLAGS -o $VOLANTMQ_WORK_DIR/bin/mqtt
+cd $GOPATH/src/github.com/chenyf/mqtt/cmd/broker \
+    && govvv build $VOLANTMQ_BUILD_FLAGS -o $VOLANTMQ_WORK_DIR/bin/broker
 
 # build debug plugins
 cd $GOPATH/src/github.com/chenyf/mqttapi/vlplugin/debug \

@@ -3,8 +3,8 @@ package systree
 import (
 	"sync/atomic"
 
-	"github.com/VolantMQ/vlapi/mqttp"
-	"github.com/VolantMQ/volantmq/types"
+	"github.com/chenyf/mqttapi/mqttp"
+	"github.com/chenyf/mqtt/types"
 )
 
 type metricEntry struct {

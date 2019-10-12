@@ -1,10 +1,9 @@
 package topicsTypes
 
 import (
-	"github.com/VolantMQ/vlapi/mqttp"
-	"github.com/VolantMQ/vlapi/vlplugin/vlpersistence"
-
-	"github.com/VolantMQ/volantmq/systree"
+	"github.com/chenyf/mqttapi/mqttp"
+	"github.com/chenyf/mqttapi/vlplugin/vlpersistence"
+	"github.com/chenyf/mqtt/systree"
 )
 
 // ProviderConfig interface implemented by every backend

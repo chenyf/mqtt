@@ -8,9 +8,8 @@ import (
 
 	"github.com/gobwas/ws/wsutil"
 	"github.com/gorilla/websocket"
-
-	"github.com/VolantMQ/volantmq/configuration"
-	"github.com/VolantMQ/volantmq/systree"
+	"github.com/chenyf/mqtt/configuration"
+	"github.com/chenyf/mqtt/systree"
 )
 
 type httpServer struct {

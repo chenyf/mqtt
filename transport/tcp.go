@@ -7,10 +7,9 @@ import (
 
 	"go.uber.org/zap"
 
-	"github.com/VolantMQ/volantmq/types"
-
-	"github.com/VolantMQ/volantmq/configuration"
-	"github.com/VolantMQ/volantmq/systree"
+	"github.com/chenyf/mqtt/types"
+	"github.com/chenyf/mqtt/configuration"
+	"github.com/chenyf/mqtt/systree"
 )
 
 // ConfigTCP configuration of tcp transport

@@ -5,10 +5,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/VolantMQ/vlapi/mqttp"
-	"github.com/VolantMQ/vlapi/vlplugin/vlpersistence"
+	"github.com/chenyf/mqttapi/mqttp"
+	"github.com/chenyf/mqttapi/vlplugin/vlpersistence"
 
-	"github.com/VolantMQ/volantmq/types"
+	"github.com/chenyf/mqtt/types"
 )
 
 type expiryEvent interface {

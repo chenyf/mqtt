@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"sync/atomic"
 
-	"github.com/VolantMQ/vlapi/mqttp"
-	"github.com/VolantMQ/volantmq/types"
+	"github.com/chenyf/mqttapi/mqttp"
+	"github.com/chenyf/mqtt/types"
 )
 
 // SessionCreatedStatus report when session status once created

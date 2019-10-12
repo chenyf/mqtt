@@ -18,15 +18,15 @@ import (
 	"sync"
 	"time"
 
-	"github.com/VolantMQ/vlapi/mqttp"
-	"github.com/VolantMQ/vlapi/vlplugin/vlpersistence"
-	"github.com/VolantMQ/vlapi/vlsubscriber"
+	"github.com/chenyf/mqttapi/mqttp"
+	"github.com/chenyf/mqttapi/vlplugin/vlpersistence"
+	"github.com/chenyf/mqttapi/vlsubscriber"
 	"go.uber.org/zap"
 
-	"github.com/VolantMQ/volantmq/configuration"
-	"github.com/VolantMQ/volantmq/systree"
-	topicsTypes "github.com/VolantMQ/volantmq/topics/types"
-	"github.com/VolantMQ/volantmq/types"
+	"github.com/chenyf/mqtt/configuration"
+	"github.com/chenyf/mqtt/systree"
+	topicsTypes "github.com/chenyf/mqtt/topics/types"
+	"github.com/chenyf/mqtt/types"
 )
 
 type provider struct {

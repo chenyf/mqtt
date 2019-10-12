@@ -5,7 +5,7 @@ import (
 	"io/ioutil"
 	"os"
 
-	"github.com/VolantMQ/vlapi/vlplugin"
+	"github.com/chenyf/mqttapi/vlplugin"
 	"gopkg.in/yaml.v3"
 )
 

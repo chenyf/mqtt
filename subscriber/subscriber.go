@@ -6,11 +6,11 @@ import (
 
 	"go.uber.org/zap"
 
-	"github.com/VolantMQ/vlapi/mqttp"
-	"github.com/VolantMQ/vlapi/vlsubscriber"
+	"github.com/chenyf/mqttapi/mqttp"
+	"github.com/chenyf/mqttapi/vlsubscriber"
 
-	"github.com/VolantMQ/volantmq/configuration"
-	topicsTypes "github.com/VolantMQ/volantmq/topics/types"
+	"github.com/chenyf/mqtt/configuration"
+	topicsTypes "github.com/chenyf/mqtt/topics/types"
 )
 
 // Config subscriber config options

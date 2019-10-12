@@ -5,7 +5,7 @@ import (
 	"io/ioutil"
 	"time"
 
-	"github.com/VolantMQ/vlapi/mqttp"
+	"github.com/chenyf/mqttapi/mqttp"
 	"github.com/pkg/errors"
 )
 

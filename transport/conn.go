@@ -5,8 +5,8 @@ import (
 	"net"
 	"os"
 
-	"github.com/VolantMQ/volantmq/auth"
-	"github.com/VolantMQ/volantmq/systree"
+	"github.com/chenyf/mqtt/auth"
+	"github.com/chenyf/mqtt/systree"
 )
 
 // fixme rid of all commented code when https://github.com/golang/go/issues/15735

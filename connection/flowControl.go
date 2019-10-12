@@ -5,7 +5,7 @@ import (
 	"sync"
 	"sync/atomic"
 
-	"github.com/VolantMQ/vlapi/mqttp"
+	"github.com/chenyf/mqttapi/mqttp"
 )
 
 var (
