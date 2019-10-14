@@ -167,6 +167,5 @@ func (l *tcp) Serve() error {
 			}
 		}
 	}
-
 	return nil
 }

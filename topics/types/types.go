@@ -60,8 +60,8 @@ type Subscriber interface {
 // Subscribers used by topic manager to return list of subscribers matching topic
 type Subscribers []Subscriber
 
-// SubscriberInterface used by subscriber to handle messages
-type SubscriberInterface interface {
+// ISubscriber used by subscriber to handle messages
+type ISubscriber interface {
 	Publish(interface{}) error
 	Subscribe(SubscribeReq) SubscribeResp
 	UnSubscribe(UnSubscribeReq) UnSubscribeResp
@@ -71,7 +71,7 @@ type SubscriberInterface interface {
 
 // Provider interface
 type Provider interface {
-	SubscriberInterface
+	ISubscriber
 	Shutdown() error
 }
 

@@ -8,7 +8,7 @@
 //
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or connied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
@@ -164,8 +164,8 @@ type SessionCallbacks interface {
 	SignalConnectionClose(DisconnectParams)
 }
 
-// impl of the connection
-type impl struct {
+// the connection object
+type conn struct {
 	SessionCallbacks
 	id               string
 	conn             transport.Conn
@@ -221,8 +221,8 @@ type Session interface {
 	SetOptions(opts ...Option) error
 }
 
-var _ Initial = (*impl)(nil)
-var _ Session = (*impl)(nil)
+var _ Initial = (*conn)(nil)
+var _ Session = (*conn)(nil)
 
 // New allocate new connection object
 func New(opts ...Option) (Initial, error) {
@@ -232,7 +232,7 @@ func New(opts ...Option) (Initial, error) {
 		}
 	}()
 
-	s := &impl{
+	s := &conn{
 		state: stateConnecting,
 		quit:  make(chan struct{}),
 		tx:    newWriter(),
@@ -276,7 +276,7 @@ func New(opts ...Option) (Initial, error) {
 }
 
 // Accept start handling incoming connection
-func (s *impl) Accept() (chan interface{}, error) {
+func (s *conn) Accept() (chan interface{}, error) {
 	var err error
 
 	defer func() {
@@ -306,12 +306,12 @@ func (s *impl) Accept() (chan interface{}, error) {
 }
 
 // Session object
-func (s *impl) Session() Session {
+func (s *conn) Session() Session {
 	return s
 }
 
 // Send packet to connection
-func (s *impl) Send(pkt mqttp.IFace) (err error) {
+func (s *conn) Send(pkt mqttp.IFace) (err error) {
 	defer func() {
 		if err != nil {
 			close(s.connect)
@@ -330,7 +330,7 @@ func (s *impl) Send(pkt mqttp.IFace) (err error) {
 }
 
 // Acknowledge incoming connection
-func (s *impl) Acknowledge(p *mqttp.ConnAck, opts ...Option) error {
+func (s *conn) Acknowledge(p *mqttp.ConnAck, opts ...Option) error {
 	var ack error
 	err := s.conn.SetReadDeadline(time.Time{})
 	if err != nil {
@@ -379,17 +379,17 @@ func (s *impl) Acknowledge(p *mqttp.ConnAck, opts ...Option) error {
 // Stop connection. Function assumed to be invoked once server about to either shutdown, disconnect
 // or session is being replaced
 // Effective only first invoke
-func (s *impl) Stop(reason error) bool {
+func (s *conn) Stop(reason error) bool {
 	return s.callStop(reason)
 }
 
-func (s *impl) stopNonAck(reason error) bool {
+func (s *conn) stopNonAck(reason error) bool {
 	s.tx.start(false)
 	return s.onConnectionClose(reason)
 }
 
 // Publish ...
-func (s *impl) Publish(id string, pkt *mqttp.Publish) {
+func (s *conn) Publish(id string, pkt *mqttp.Publish) {
 	s.tx.send(pkt)
 }
 
@@ -402,7 +402,7 @@ func genClientID() string {
 	return base64.URLEncoding.EncodeToString(b)
 }
 
-func (s *impl) onConnect(pkt *mqttp.Connect) (mqttp.IFace, error) {
+func (s *conn) onConnect(pkt *mqttp.Connect) (mqttp.IFace, error) {
 	if atomic.CompareAndSwapUint32(&s.connectProcessed, 0, 1) {
 		id := string(pkt.ClientID())
 		idGen := false
@@ -452,7 +452,7 @@ func (s *impl) onConnect(pkt *mqttp.Connect) (mqttp.IFace, error) {
 			params.Durable = false
 		}
 
-		s.connect <- params
+		s.connect <- params  //???? why???
 		return nil, nil
 	}
 
@@ -460,7 +460,7 @@ func (s *impl) onConnect(pkt *mqttp.Connect) (mqttp.IFace, error) {
 	return nil, mqttp.CodeProtocolError
 }
 
-func (s *impl) onAuth(pkt *mqttp.Auth) (mqttp.IFace, error) {
+func (s *conn) onAuth(pkt *mqttp.Auth) (mqttp.IFace, error) {
 	// AUTH packets are allowed for v5.0 only
 	if s.version < mqttp.ProtocolV50 {
 		return nil, mqttp.CodeRefusedServerUnavailable
@@ -516,7 +516,7 @@ func (s *impl) onAuth(pkt *mqttp.Auth) (mqttp.IFace, error) {
 	return s.signalAuth(s.id, &params)
 }
 
-func (s *impl) readConnProperties(req *mqttp.Connect, params *ConnectParams) {
+func (s *conn) readConnProperties(req *mqttp.Connect, params *ConnectParams) {
 	if s.version < mqttp.ProtocolV50 {
 		return
 	}
@@ -595,7 +595,7 @@ func (s *impl) readConnProperties(req *mqttp.Connect, params *ConnectParams) {
 	return
 }
 
-func (s *impl) processIncoming(p mqttp.IFace) error {
+func (s *conn) processIncoming(p mqttp.IFace) error {
 	var err error
 	var resp mqttp.IFace
 
@@ -635,6 +635,7 @@ func (s *impl) processIncoming(p mqttp.IFace) error {
 	}
 
 	if resp != nil {
+		// 发送响应结果
 		s.tx.send(resp)
 	}
 
@@ -642,7 +643,7 @@ func (s *impl) processIncoming(p mqttp.IFace) error {
 }
 
 // forward PUBLISH message to topics manager which takes care about subscribers
-func (s *impl) publishToTopic(p *mqttp.Publish) error {
+func (s *conn) publishToTopic(p *mqttp.Publish) error {
 	// v5.0
 	// If the Server included Retain Available in its CONNACK response to a Client with its value set to 0 and it
 	// receives a PUBLISH packet with the RETAIN flag is set to 1, then it uses the DISCONNECT Reason
@@ -689,14 +690,14 @@ func (s *impl) publishToTopic(p *mqttp.Publish) error {
 }
 
 // onReleaseIn ack process for incoming messages
-func (s *impl) onReleaseIn(o, n mqttp.IFace) {
+func (s *conn) onReleaseIn(o, n mqttp.IFace) {
 	switch p := o.(type) {
 	case *mqttp.Publish:
 		_ = s.publishToTopic(p)
 	}
 }
 
-func (s *impl) onConnectionCloseStage1(status error) {
+func (s *conn) onConnectionCloseStage1(status error) {
 	// shutdown quit channel tells all routines finita la commedia
 	close(s.quit)
 
@@ -724,7 +725,7 @@ func (s *impl) onConnectionCloseStage1(status error) {
 	s.conn = nil
 }
 
-func (s *impl) onConnectionCloseStage2(status error) {
+func (s *conn) onConnectionCloseStage2(status error) {
 	// shutdown quit channel tells all routines finita la commedia
 	close(s.quit)
 
@@ -796,7 +797,7 @@ func (s *impl) onConnectionCloseStage2(status error) {
 	})
 }
 
-func (s *impl) onConnectionClose(status error) bool {
+func (s *conn) onConnectionClose(status error) bool {
 	return s.onConnDisconnect.Do(func() {
 		s.onConnClose(status)
 	})
@@ -806,7 +807,7 @@ func (s *impl) onConnectionClose(status error) bool {
 // On QoS == 0, we should just take the next step, no ack required
 // On QoS == 1, send back PUBACK, then take the next step
 // On QoS == 2, we need to put it in the ack queue, send back PUBREC
-func (s *impl) onPublish(pkt *mqttp.Publish) (mqttp.IFace, error) {
+func (s *conn) onPublish(pkt *mqttp.Publish) (mqttp.IFace, error) {
 	// check for topic access
 	var err error
 	reason := mqttp.CodeSuccess
@@ -891,7 +892,7 @@ func (s *impl) onPublish(pkt *mqttp.Publish) (mqttp.IFace, error) {
 }
 
 // onAck handle ack acknowledgment received from remote
-func (s *impl) onAck(pkt *mqttp.Ack) (mqttp.IFace, error) {
+func (s *conn) onAck(pkt *mqttp.Ack) (mqttp.IFace, error) {
 	var resp mqttp.IFace
 
 	switch pkt.Type() {

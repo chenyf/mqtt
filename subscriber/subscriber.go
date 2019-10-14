@@ -17,7 +17,7 @@ import (
 type Config struct {
 	ID             string
 	OfflinePublish subscriber.Publisher
-	Topics         topicsTypes.SubscriberInterface
+	Topics         topicsTypes.ISubscriber
 	Version        mqttp.ProtocolVersion
 }
 

@@ -182,7 +182,6 @@ func (l *ws) Serve() error {
 	} else {
 		e = l.http.ListenAndServe()
 	}
-
 	return e
 }
 
