@@ -66,14 +66,14 @@ func newNode(overlap bool, parent *node) *node {
 	return n
 }
 
-func (mT *provider) leafInsertNode(levels []string) *node {
-	root := mT.root
+func (this *provider) leafInsertNode(levels []string) *node {
+	root := this.root
 
 	for _, level := range levels {
 		// Add node if it doesn't already exist
 		n, ok := root.children[level]
 		if !ok {
-			n = newNode(mT.allowOverlapping, root)
+			n = newNode(this.allowOverlapping, root)
 
 			root.children[level] = n
 		} else {
@@ -86,8 +86,8 @@ func (mT *provider) leafInsertNode(levels []string) *node {
 	return root
 }
 
-func (mT *provider) leafSearchNode(levels []string) *node {
-	root := mT.root
+func (this *provider) leafSearchNode(levels []string) *node {
+	root := this.root
 
 	// run down and try get path matching given topic
 	for _, token := range levels {
@@ -102,10 +102,10 @@ func (mT *provider) leafSearchNode(levels []string) *node {
 	return root
 }
 
-func (mT *provider) subscriptionInsert(filter string, sub topics.Subscriber, p *subscriber.SubscriptionParams) bool {
+func (this *provider) subscriptionInsert(filter string, sub topics.Subscriber, p *subscriber.SubscriptionParams) bool {
 	levels := strings.Split(filter, "/")
 
-	root := mT.leafInsertNode(levels)
+	root := this.leafInsertNode(levels)
 
 	// Let's see if the subscriber is already on the list and just update QoS if so
 	// Otherwise create new entry
@@ -123,12 +123,12 @@ func (mT *provider) subscriptionInsert(filter string, sub topics.Subscriber, p *
 	return exists
 }
 
-func (mT *provider) subscriptionRemove(topic string, sub topics.Subscriber) error {
+func (this *provider) subscriptionRemove(topic string, sub topics.Subscriber) error {
 	levels := strings.Split(topic, "/")
 
 	var err error
 
-	root := mT.leafSearchNode(levels)
+	root := this.leafSearchNode(levels)
 	if root == nil {
 		return topics.ErrNotFound
 	}
@@ -155,7 +155,7 @@ func (mT *provider) subscriptionRemove(topic string, sub topics.Subscriber) erro
 		// If there are no more subscribers or inner nodes or retained messages remove this node from parent
 		if len(leafNode.subs) == 0 && len(leafNode.children) == 0 && leafNode.retained == nil {
 			// if this is not root node
-			mT.onCleanUnsubscribe(levels[:level])
+			this.onCleanUnsubscribe(levels[:level])
 			if leafNode.parent != nil {
 				delete(leafNode.parent.children, levels[level-1])
 			}
@@ -190,8 +190,8 @@ func subscriptionRecurseSearch(root *node, levels []string, publishID uintptr, p
 	}
 }
 
-func (mT *provider) subscriptionSearch(topic string, publishID uintptr, p *publishes) {
-	root := mT.root
+func (this *provider) subscriptionSearch(topic string, publishID uintptr, p *publishes) {
+	root := this.root
 	levels := strings.Split(topic, "/")
 	level := levels[0]
 
@@ -202,18 +202,18 @@ func (mT *provider) subscriptionSearch(topic string, publishID uintptr, p *publi
 	}
 }
 
-func (mT *provider) retainInsert(topic string, obj types.RetainObject) {
+func (this *provider) retainInsert(topic string, obj types.RetainObject) {
 	levels := strings.Split(topic, "/")
 
-	root := mT.leafInsertNode(levels)
+	root := this.leafInsertNode(levels)
 
 	root.retained = obj
 }
 
-func (mT *provider) retainRemove(topic string) error {
+func (this *provider) retainRemove(topic string) error {
 	levels := strings.Split(topic, "/")
 
-	root := mT.leafSearchNode(levels)
+	root := this.leafSearchNode(levels)
 	if root == nil {
 		return topics.ErrNotFound
 	}
@@ -264,28 +264,28 @@ func retainRecurseSearch(root *node, levels []string, retained *[]*mqttp.Publish
 	}
 }
 
-func (mT *provider) retainSearch(filter string, retained *[]*mqttp.Publish) {
+func (this *provider) retainSearch(filter string, retained *[]*mqttp.Publish) {
 	levels := strings.Split(filter, "/")
 	level := levels[0]
 
 	if level == topics.MWC {
-		for t, n := range mT.root.children {
+		for t, n := range this.root.children {
 			if t != "" && !strings.HasPrefix(t, "$") {
 				n.allRetained(retained)
 			}
 		}
-	} else if strings.HasPrefix(level, "$") && mT.root.children[level] != nil {
-		retainRecurseSearch(mT.root.children[level], levels[1:], retained)
+	} else if strings.HasPrefix(level, "$") && this.root.children[level] != nil {
+		retainRecurseSearch(this.root.children[level], levels[1:], retained)
 	} else {
-		retainRecurseSearch(mT.root, levels, retained)
+		retainRecurseSearch(this.root, levels, retained)
 	}
 }
 
-func (sn *node) getRetained(retained *[]*mqttp.Publish) {
-	if sn.retained != nil {
+func (this *node) getRetained(retained *[]*mqttp.Publish) {
+	if this.retained != nil {
 		var p *mqttp.Publish
 
-		switch t := sn.retained.(type) {
+		switch t := this.retained.(type) {
 		case *mqttp.Publish:
 			p = t
 		case systree.DynamicValue:
@@ -299,21 +299,21 @@ func (sn *node) getRetained(retained *[]*mqttp.Publish) {
 			*retained = append(*retained, p)
 		} else {
 			// publish has expired, thus nobody should get it
-			sn.retained = nil
+			this.retained = nil
 		}
 	}
 }
 
-func (sn *node) allRetained(retained *[]*mqttp.Publish) {
-	sn.getRetained(retained)
+func (this *node) allRetained(retained *[]*mqttp.Publish) {
+	this.getRetained(retained)
 
-	for _, n := range sn.children {
+	for _, n := range this.children {
 		n.allRetained(retained)
 	}
 }
 
-func (sn *node) overlappingSubscribers(publishID uintptr, p *publishes) {
-	for id, sub := range sn.subs {
+func (this *node) overlappingSubscribers(publishID uintptr, p *publishes) {
+	for id, sub := range this.subs {
 		if s, ok := (*p)[id]; ok {
 			if sub.p.ID > 0 {
 				s[0].ids = append(s[0].ids, sub.p.ID)
@@ -331,8 +331,8 @@ func (sn *node) overlappingSubscribers(publishID uintptr, p *publishes) {
 	}
 }
 
-func (sn *node) nonOverlappingSubscribers(publishID uintptr, p *publishes) {
-	for id, sub := range sn.subs {
+func (this *node) nonOverlappingSubscribers(publishID uintptr, p *publishes) {
+	for id, sub := range this.subs {
 		if !sub.p.Ops.NL() || id != publishID {
 			pe := sub.acquire()
 			if _, ok := (*p)[id]; ok {

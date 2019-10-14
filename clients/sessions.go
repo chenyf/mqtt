@@ -531,7 +531,7 @@ func (m *Manager) allocContainer(id string, username string, authMngr *auth.Mana
 		id:          id,
 		createdAt:   createdAt,
 		conn:        conn,
-		messenger:   m.TopicsMgr,
+		topicsMgr:   m.TopicsMgr,
 		persistence: m.persistence,
 		permissions: authMngr,
 		username:    username,
@@ -957,7 +957,7 @@ func (m *Manager) decodeSessionExpiry(ctx *loadContext, id string, state *persis
 
 		ctx.preloadConfigs[id].exp = &expiryConfig{
 			expiryEvent:   m,
-			messenger:     m.TopicsMgr,
+			topicsMgr:     m.TopicsMgr,
 			createdAt:     createdAt,
 			expiringSince: expiringSince,
 			will:          will,

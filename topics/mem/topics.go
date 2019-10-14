@@ -121,7 +121,7 @@ func NewMemProvider(config *topics.MemConfig) (topics.Provider, error) {
 	return p, nil
 }
 
-func (mT *provider) Subscribe(req topics.SubscribeReq) topics.SubscribeResp {
+func (this *provider) Subscribe(req topics.SubscribeReq) topics.SubscribeResp {
 	cAllocated := false
 
 	if req.Chan == nil {
@@ -129,8 +129,10 @@ func (mT *provider) Subscribe(req topics.SubscribeReq) topics.SubscribeResp {
 		req.Chan = make(chan topics.SubscribeResp)
 	}
 
-	mT.subIn <- req
+	// 将请求送入处理队列
+	this.subIn <- req
 
+	// 同步等待处理结果
 	resp := <-req.Chan
 
 	if cAllocated {
@@ -140,7 +142,7 @@ func (mT *provider) Subscribe(req topics.SubscribeReq) topics.SubscribeResp {
 	return resp
 }
 
-func (mT *provider) UnSubscribe(req topics.UnSubscribeReq) topics.UnSubscribeResp {
+func (this *provider) UnSubscribe(req topics.UnSubscribeReq) topics.UnSubscribeResp {
 	cAllocated := false
 
 	if req.Chan == nil {
@@ -148,7 +150,7 @@ func (mT *provider) UnSubscribe(req topics.UnSubscribeReq) topics.UnSubscribeRes
 		req.Chan = make(chan topics.UnSubscribeResp)
 	}
 
-	mT.unSubIn <- req
+	this.unSubIn <- req
 
 	resp := <-req.Chan
 
@@ -159,80 +161,80 @@ func (mT *provider) UnSubscribe(req topics.UnSubscribeReq) topics.UnSubscribeRes
 	return resp
 }
 
-func (mT *provider) subscribe(filter string, s topics.Subscriber, p *subscriber.SubscriptionParams) ([]*mqttp.Publish, error) {
-	defer mT.smu.Unlock()
-	mT.smu.Lock()
+func (this *provider) subscribe(filter string, s topics.Subscriber, p *subscriber.SubscriptionParams) ([]*mqttp.Publish, error) {
+	defer this.smu.Unlock()
+	this.smu.Lock()
 
 	if s == nil || p == nil {
 		return []*mqttp.Publish{}, topics.ErrInvalidArgs
 	}
 
 	p.Granted = p.Ops.QoS()
-	exists := mT.subscriptionInsert(filter, s, p)
+	exists := this.subscriptionInsert(filter, s, p)
 
 	var r []*mqttp.Publish
 
 	// [MQTT-3.3.1-5]
 	rh := p.Ops.RetainHandling()
 	if (rh == mqttp.RetainHandlingRetain) || ((rh == mqttp.RetainHandlingIfNotExists) && !exists) {
-		mT.retainSearch(filter, &r)
+		this.retainSearch(filter, &r)
 	}
 
 	return r, nil
 }
 
-func (mT *provider) unSubscribe(topic string, sub topics.Subscriber) error {
-	defer mT.smu.Unlock()
-	mT.smu.Lock()
+func (this *provider) unSubscribe(topic string, sub topics.Subscriber) error {
+	defer this.smu.Unlock()
+	this.smu.Lock()
 
-	return mT.subscriptionRemove(topic, sub)
+	return this.subscriptionRemove(topic, sub)
 }
 
-func (mT *provider) Publish(m interface{}) error {
+func (this *provider) Publish(m interface{}) error {
 	msg, ok := m.(*mqttp.Publish)
 	if !ok {
 		return topics.ErrUnexpectedObjectType
 	}
-	mT.inbound <- msg
+	this.inbound <- msg
 
 	return nil
 }
 
-func (mT *provider) Retain(obj types.RetainObject) error {
-	mT.inRetained <- obj
+func (this *provider) Retain(obj types.RetainObject) error {
+	this.inRetained <- obj
 
 	return nil
 }
 
-func (mT *provider) Retained(filter string) ([]*mqttp.Publish, error) {
+func (this *provider) Retained(filter string) ([]*mqttp.Publish, error) {
 	// [MQTT-3.3.1-5]
 	var r []*mqttp.Publish
 
-	defer mT.smu.Unlock()
-	mT.smu.Lock()
+	defer this.smu.Unlock()
+	this.smu.Lock()
 
 	// [MQTT-3.3.1-5]
-	mT.retainSearch(filter, &r)
+	this.retainSearch(filter, &r)
 
 	return r, nil
 }
 
-func (mT *provider) Shutdown() error {
-	defer mT.smu.Unlock()
-	mT.smu.Lock()
+func (this *provider) Shutdown() error {
+	defer this.smu.Unlock()
+	this.smu.Lock()
 
-	close(mT.inbound)
-	close(mT.inRetained)
-	close(mT.subIn)
-	close(mT.unSubIn)
+	close(this.inbound)
+	close(this.inRetained)
+	close(this.subIn)
+	close(this.unSubIn)
 
-	mT.wgPublisher.Wait()
+	this.wgPublisher.Wait()
 
-	if mT.persist != nil {
+	if this.persist != nil {
 		var res []*mqttp.Publish
 		// [MQTT-3.3.1-5]
-		mT.retainSearch("#", &res)
-		mT.retainSearch("/#", &res)
+		this.retainSearch("#", &res)
+		this.retainSearch("/#", &res)
 
 		var encoded []*persist.PersistedPacket
 
@@ -240,7 +242,7 @@ func (mT *provider) Shutdown() error {
 			// Discard retained expired and QoS0 messages
 			if expireAt, _, expired := pkt.Expired(); !expired && pkt.QoS() != mqttp.QoS0 {
 				if buf, err := mqttp.Encode(pkt); err != nil {
-					mT.log.Error("Couldn't encode retained message", zap.Error(err))
+					this.log.Error("Couldn't encode retained message", zap.Error(err))
 				} else {
 					entry := &persist.PersistedPacket{
 						Data: buf,
@@ -253,27 +255,27 @@ func (mT *provider) Shutdown() error {
 			}
 		}
 		if len(encoded) > 0 {
-			mT.log.Debug("Storing retained messages", zap.Int("amount", len(encoded)))
-			if err := mT.persist.Store(encoded); err != nil {
-				mT.log.Error("Couldn't persist retained messages", zap.Error(err))
+			this.log.Debug("Storing retained messages", zap.Int("amount", len(encoded)))
+			if err := this.persist.Store(encoded); err != nil {
+				this.log.Error("Couldn't persist retained messages", zap.Error(err))
 			}
 		}
 	}
 
-	mT.root = nil
+	this.root = nil
 	return nil
 }
 
-func (mT *provider) retain(obj types.RetainObject) {
+func (this *provider) retain(obj types.RetainObject) {
 	insert := true
 
-	mT.smu.Lock()
+	this.smu.Lock()
 
 	switch t := obj.(type) {
 	case *mqttp.Publish:
 		// [MQTT-3.3.1-10]            [MQTT-3.3.1-7]
 		if len(t.Payload()) == 0 || t.QoS() == mqttp.QoS0 {
-			_ = mT.retainRemove(obj.Topic()) // nolint: errcheck
+			_ = this.retainRemove(obj.Topic()) // nolint: errcheck
 			if len(t.Payload()) == 0 {
 				insert = false
 			}
@@ -281,55 +283,55 @@ func (mT *provider) retain(obj types.RetainObject) {
 	}
 
 	if insert {
-		mT.retainInsert(obj.Topic(), obj)
+		this.retainInsert(obj.Topic(), obj)
 	}
 
-	mT.smu.Unlock()
+	this.smu.Unlock()
 }
 
-func (mT *provider) subscriber() {
-	defer mT.wgPublisher.Done()
-	mT.wgPublisherStarted.Done()
+func (this *provider) subscriber() {
+	defer this.wgPublisher.Done()
+	this.wgPublisherStarted.Done()
 
-	for req := range mT.subIn {
-		retained, _ := mT.subscribe(req.Filter, req.S, req.Params)
+	for req := range this.subIn {
+		retained, _ := this.subscribe(req.Filter, req.S, req.Params)
 		req.Chan <- topics.SubscribeResp{Retained: retained}
 	}
 }
 
-func (mT *provider) unSubscriber() {
-	defer mT.wgPublisher.Done()
-	mT.wgPublisherStarted.Done()
+func (this *provider) unSubscriber() {
+	defer this.wgPublisher.Done()
+	this.wgPublisherStarted.Done()
 
-	for req := range mT.unSubIn {
-		req.Chan <- topics.UnSubscribeResp{Err: mT.unSubscribe(req.Filter, req.S)}
+	for req := range this.unSubIn {
+		req.Chan <- topics.UnSubscribeResp{Err: this.unSubscribe(req.Filter, req.S)}
 	}
 }
 
-func (mT *provider) retainer() {
-	defer mT.wgPublisher.Done()
-	mT.wgPublisherStarted.Done()
+func (this *provider) retainer() {
+	defer this.wgPublisher.Done()
+	this.wgPublisherStarted.Done()
 
-	for obj := range mT.inRetained {
-		mT.retain(obj)
+	for obj := range this.inRetained {
+		this.retain(obj)
 	}
 }
 
-func (mT *provider) publisher() {
-	defer mT.wgPublisher.Done()
-	mT.wgPublisherStarted.Done()
+func (this *provider) publisher() {
+	defer this.wgPublisher.Done()
+	this.wgPublisherStarted.Done()
 
-	for msg := range mT.inbound {
+	for msg := range this.inbound {
 		pubEntries := publishes{}
 
-		mT.smu.Lock()
-		mT.subscriptionSearch(msg.Topic(), msg.PublishID(), &pubEntries)
-		mT.smu.Unlock()
+		this.smu.Lock()
+		this.subscriptionSearch(msg.Topic(), msg.PublishID(), &pubEntries)
+		this.smu.Unlock()
 
 		for _, pub := range pubEntries {
 			for _, e := range pub {
 				if err := e.s.Publish(msg, e.qos, e.ops, e.ids); err != nil {
-					mT.log.Error("Publish error", zap.Error(err))
+					this.log.Error("Publish error", zap.Error(err))
 				}
 				e.s.Release()
 			}

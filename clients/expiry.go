@@ -20,7 +20,7 @@ type expiryConfig struct {
 	id            string
 	createdAt     time.Time
 	expiringSince time.Time
-	messenger     types.TopicMessenger
+	topicsMgr     types.TopicMessenger
 	will          *mqttp.Publish
 	expireIn      *uint32
 	willIn        uint32
@@ -102,7 +102,7 @@ func (s *expiry) timerCallback() {
 	// 1. check for will message available
 	if s.will != nil {
 		// publish if exists and wipe state
-		_ = s.messenger.Publish(s.will) // nolint: errcheck
+		_ = s.topicsMgr.Publish(s.will) // nolint: errcheck
 		s.will = nil
 		s.willIn = 0
 	}

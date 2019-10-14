@@ -24,7 +24,7 @@ type sessionEvents interface {
 type sessionPreConfig struct {
 	id          string
 	createdAt   time.Time
-	messenger   types.TopicMessenger
+	topicsMgr   types.TopicMessenger
 	conn        connection.Session
 	persistence persist.Packets
 	permissions auth.Permissions
@@ -81,7 +81,7 @@ func (s *session) SignalPublish(pkt *mqttp.Publish) error {
 
 	// [MQTT-3.3.1.3]
 	if pkt.Retain() {
-		if err := s.messenger.Retain(pkt); err != nil {
+		if err := s.topicsMgr.Retain(pkt); err != nil {
 			s.log.Error("Error retaining message", zap.String("clientId", s.id), zap.Error(err))
 		}
 
@@ -97,7 +97,7 @@ func (s *session) SignalPublish(pkt *mqttp.Publish) error {
 		}
 	}
 
-	if err := s.messenger.Publish(pkt); err != nil {
+	if err := s.topicsMgr.Publish(pkt); err != nil {
 		s.log.Error("Couldn't publish", zap.String("clientId", s.id), zap.Error(err))
 	}
 
@@ -118,12 +118,14 @@ func (s *session) SignalSubscribe(pkt *mqttp.Subscribe) (mqttp.IFace, error) {
 	subsID := uint32(0)
 
 	// V5.0 [MQTT-3.8.2.1.2]
+	// 获取 subscription id
 	if prop := pkt.PropertyGet(mqttp.PropertySubscriptionIdentifier); prop != nil {
 		if v, e := prop.AsInt(); e == nil {
 			subsID = v
 		}
 	}
 
+	// 循环检查每一个 topic 是否合法
 	err := pkt.ForEachTopic(func(t *mqttp.Topic) error {
 		// V5.0
 		// [MQTT-3.8.3-4] It is a Protocol Error to set the No Local bit to 1 on a Shared Subscription
@@ -150,6 +152,8 @@ func (s *session) SignalSubscribe(pkt *mqttp.Subscribe) (mqttp.IFace, error) {
 				Ops: t.Ops(),
 			}
 
+
+			// 重点： 交给 subscriber 具体干活
 			if retained, ee := s.subscriber.Subscribe(t.Filter(), &params); ee != nil {
 				reason = mqttp.QosFailure
 			} else {
@@ -174,9 +178,12 @@ func (s *session) SignalSubscribe(pkt *mqttp.Subscribe) (mqttp.IFace, error) {
 	}
 
 	// Now put retained messages into publish queue
+	// 处理 retained 消息
 	for _, rp := range retainedPublishes {
 		if p, e := rp.Clone(s.version); e == nil {
 			p.SetRetain(true)
+
+			// 重点： 将retain消息发送给该 client
 			s.conn.Publish(s.id, p)
 		} else {
 			s.log.Error("clone PUBLISH message", zap.String("clientId", s.id), zap.Error(e))
@@ -301,7 +308,7 @@ func (s *session) SignalConnectionClose(params connection.DisconnectParams) {
 		}
 	}
 	if s.will != nil && willIn == 0 {
-		if err := s.messenger.Publish(s.will); err != nil {
+		if err := s.topicsMgr.Publish(s.will); err != nil {
 			s.log.Error("Publish will message", zap.String("ClientID", s.id), zap.Error(err))
 		}
 		s.will = nil
@@ -331,7 +338,7 @@ func (s *session) SignalConnectionClose(params connection.DisconnectParams) {
 			exp = &expiryConfig{
 				id:        s.id,
 				createdAt: s.createdAt,
-				messenger: s.messenger,
+				topicsMgr: s.topicsMgr,
 				will:      s.will,
 				expireIn:  s.expireIn,
 				willIn:    willIn,
