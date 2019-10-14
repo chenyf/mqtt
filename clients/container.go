@@ -14,7 +14,7 @@ type container struct {
 	rmLock    sync.RWMutex
 	ses       *session
 	expiry    atomic.Value
-	sub       *subscriber.Type
+	sub       *subscriber.Subscriber
 	removable bool
 	removed   bool
 }
@@ -47,15 +47,14 @@ func (s *container) swap(from *container) *container {
 	return s
 }
 
-func (s *container) subscriber(cleanStart bool, c subscriber.Config) *subscriber.Type {
+func (s *container) subscriber(cleanStart bool, c subscriber.Config) *subscriber.Subscriber {
 	if cleanStart && s.sub != nil {
 		s.sub.Offline(true)
 		s.sub = nil
 	}
 
 	if s.sub == nil {
-		s.sub = subscriber.New(c)
+		s.sub = subscriber.NewSubscriber(c)
 	}
-
 	return s.sub
 }

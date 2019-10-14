@@ -21,8 +21,8 @@ type Config struct {
 	Version        mqttp.ProtocolVersion
 }
 
-// Type subscriber object
-type Type struct {
+// Subscriber subscriber object
+type Subscriber struct {
 	subscriptions subscriber.Subscriptions
 	lock          sync.RWMutex
 	publisher     subscriber.Publisher
@@ -33,11 +33,11 @@ type Type struct {
 	Config
 }
 
-var _ subscriber.IFace = (*Type)(nil)
+var _ subscriber.IFace = (*Subscriber)(nil)
 
 // New allocate new subscriber
-func New(c Config) *Type {
-	p := &Type{
+func NewSubscriber(c Config) *Subscriber {
+	p := &Subscriber{
 		subscriptions: make(subscriber.Subscriptions),
 		Config:        c,
 		log:           configuration.GetLogger().Named("subscriber"),
@@ -46,53 +46,52 @@ func New(c Config) *Type {
 	}
 
 	p.publisher = c.OfflinePublish
-
 	return p
 }
 
 // GetID get subscriber id
-func (s *Type) GetID() string {
-	return s.ID
+func (this *Subscriber) GetID() string {
+	return this.ID
 }
 
 // Hash returns address of the provider struct.
 // Used by topics provider as a key to subscriber object
-func (s *Type) Hash() uintptr {
-	return uintptr(unsafe.Pointer(s))
+func (this *Subscriber) Hash() uintptr {
+	return uintptr(unsafe.Pointer(this))
 }
 
 // HasSubscriptions either has active subscriptions or not
-func (s *Type) HasSubscriptions() bool {
-	return len(s.subscriptions) > 0
+func (this *Subscriber) HasSubscriptions() bool {
+	return len(this.subscriptions) > 0
 }
 
 // Acquire prevent subscriber being deleted before active writes finished
-func (s *Type) Acquire() {
-	s.access.Add(1)
+func (this *Subscriber) Acquire() {
+	this.access.Add(1)
 }
 
 // Release subscriber once topics provider finished write
-func (s *Type) Release() {
-	s.access.Done()
+func (this *Subscriber) Release() {
+	this.access.Done()
 }
 
 // GetVersion return MQTT protocol version
-func (s *Type) GetVersion() mqttp.ProtocolVersion {
-	return s.Version
+func (this *Subscriber) GetVersion() mqttp.ProtocolVersion {
+	return this.Version
 }
 
 // Subscriptions list active subscriptions
-func (s *Type) Subscriptions() subscriber.Subscriptions {
-	return s.subscriptions
+func (this *Subscriber) Subscriptions() subscriber.Subscriptions {
+	return this.subscriptions
 }
 
 // Subscribe to given topic
-func (s *Type) Subscribe(topic string, params *subscriber.SubscriptionParams) ([]*mqttp.Publish, error) {
-	resp := s.Topics.Subscribe(topics.SubscribeReq{
+func (this *Subscriber) Subscribe(topic string, params *subscriber.SubscriptionParams) ([]*mqttp.Publish, error) {
+	resp := this.Topics.Subscribe(topics.SubscribeReq{
 		Filter: topic,
 		Params: params,
-		S:      s,
-		Chan:   s.subSignal,
+		S:      this,
+		Chan:   this.subSignal,
 	})
 
 	if resp.Err != nil {
@@ -100,30 +99,27 @@ func (s *Type) Subscribe(topic string, params *subscriber.SubscriptionParams) ([
 	}
 
 	params.Granted = resp.Granted
-
-	s.subscriptions[topic] = params
-
+	this.subscriptions[topic] = params
 	return resp.Retained, nil
 }
 
 // UnSubscribe from given topic
-func (s *Type) UnSubscribe(topic string) error {
-	resp := s.Topics.UnSubscribe(topics.UnSubscribeReq{
+func (this *Subscriber) UnSubscribe(topic string) error {
+	resp := this.Topics.UnSubscribe(topics.UnSubscribeReq{
 		Filter: topic,
-		S:      s,
-		Chan:   s.unSubSignal,
+		S:      this,
+		Chan:   this.unSubSignal,
 	})
 
-	delete(s.subscriptions, topic)
-
+	delete(this.subscriptions, topic)
 	return resp.Err
 }
 
 // Publish message accordingly to subscriber state
 // online: forward message to session
 // offline: persist message
-func (s *Type) Publish(p *mqttp.Publish, grantedQoS mqttp.QosType, ops mqttp.SubscriptionOptions, ids []uint32) error {
-	pkt, err := p.Clone(s.Version)
+func (this *Subscriber) Publish(p *mqttp.Publish, grantedQoS mqttp.QosType, ops mqttp.SubscriptionOptions, ids []uint32) error {
+	pkt, err := p.Clone(this.Version)
 	if err != nil {
 		return err
 	}
@@ -160,47 +156,47 @@ func (s *Type) Publish(p *mqttp.Publish, grantedQoS mqttp.QosType, ops mqttp.Sub
 		// case message.QoS0:
 	}
 
-	s.lock.RLock()
-	s.publisher(s.ID, pkt)
-	s.lock.RUnlock()
+	this.lock.RLock()
+	this.publisher(this.ID, pkt)
+	this.lock.RUnlock()
 
 	return nil
 }
 
 // Online moves subscriber to online state
 // since this moment all of publishes are forwarded to provided callback
-func (s *Type) Online(c subscriber.Publisher) {
-	s.lock.Lock()
-	s.publisher = c
-	s.lock.Unlock()
+func (this *Subscriber) Online(c subscriber.Publisher) {
+	this.lock.Lock()
+	this.publisher = c
+	this.lock.Unlock()
 }
 
 // Offline put session offline
 // if shutdown is true it does unsubscribe from all active subscriptions
-func (s *Type) Offline(shutdown bool) {
+func (this *Subscriber) Offline(shutdown bool) {
 	// if session is clean then remove all remaining subscriptions
 	if shutdown {
-		for topic := range s.subscriptions {
-			if err := s.UnSubscribe(topic); err != nil {
-				s.log.Debugf("[clientId: %s] topic: %s: %s", s.ID, topic, err.Error())
+		for topic := range this.subscriptions {
+			if err := this.UnSubscribe(topic); err != nil {
+				this.log.Debugf("[clientId: %s] topic: %s: %s", this.ID, topic, err.Error())
 			}
 		}
 
-		s.access.Wait()
+		this.access.Wait()
 		select {
-		case <-s.subSignal:
+		case <-this.subSignal:
 		default:
-			close(s.subSignal)
+			close(this.subSignal)
 		}
 
 		select {
-		case <-s.unSubSignal:
+		case <-this.unSubSignal:
 		default:
-			close(s.unSubSignal)
+			close(this.unSubSignal)
 		}
 	} else {
-		s.lock.Lock()
-		s.publisher = s.OfflinePublish
-		s.lock.Unlock()
+		this.lock.Lock()
+		this.publisher = this.OfflinePublish
+		this.lock.Unlock()
 	}
 }
