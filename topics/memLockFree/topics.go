@@ -24,7 +24,7 @@ import (
 
 	"github.com/chenyf/mqtt/configuration"
 	"github.com/chenyf/mqtt/systree"
-	topicsTypes "github.com/chenyf/mqtt/topics/types"
+	"github.com/chenyf/mqtt/topics"
 	"github.com/chenyf/mqtt/types"
 )
 
@@ -38,27 +38,27 @@ type provider struct {
 	wgPublisherStarted sync.WaitGroup
 	inbound            chan *mqttp.Publish
 	inRetained         chan types.RetainObject
-	subIn              chan topicsTypes.SubscribeReq
-	unSubIn            chan topicsTypes.UnSubscribeReq
+	subIn              chan topics.SubscribeReq
+	unSubIn            chan topics.UnSubscribeReq
 	onCleanUnsubscribe func([]string)
 	nodeSubscribers    func(sn *node, publishID uintptr, p *publishes)
 }
 
-var _ topicsTypes.Provider = (*provider)(nil)
+var _ topics.Provider = (*provider)(nil)
 
 // NewMemProvider returns an new instance of the provider, which is implements the
 // TopicsProvider interface. provider is a hidden struct that stores the topic
 // subscriptions and retained messages in memory. The content is not persistent so
 // when the server goes, everything will be gone. Use with care.
-func NewMemProvider(config *topicsTypes.MemConfig) (topicsTypes.Provider, error) {
+func NewMemProvider(config *topics.MemConfig) (topics.Provider, error) {
 	p := &provider{
 		stat:               config.Stat,
 		persist:            config.Persist,
 		onCleanUnsubscribe: config.OnCleanUnsubscribe,
 		inbound:            make(chan *mqttp.Publish, 1024*512),
 		inRetained:         make(chan types.RetainObject, 1024*512),
-		subIn:              make(chan topicsTypes.SubscribeReq, 1024*512),
-		unSubIn:            make(chan topicsTypes.UnSubscribeReq, 1024*512),
+		subIn:              make(chan topics.SubscribeReq, 1024*512),
+		unSubIn:            make(chan topics.UnSubscribeReq, 1024*512),
 	}
 
 	if config.OverlappingSubscriptions {
@@ -126,12 +126,12 @@ func NewMemProvider(config *topicsTypes.MemConfig) (topicsTypes.Provider, error)
 	return p, nil
 }
 
-func (mT *provider) Subscribe(req topicsTypes.SubscribeReq) topicsTypes.SubscribeResp {
+func (mT *provider) Subscribe(req topics.SubscribeReq) topics.SubscribeResp {
 	cAllocated := false
 
 	if req.Chan == nil {
 		cAllocated = true
-		req.Chan = make(chan topicsTypes.SubscribeResp)
+		req.Chan = make(chan topics.SubscribeResp)
 	}
 
 	mT.subIn <- req
@@ -145,12 +145,12 @@ func (mT *provider) Subscribe(req topicsTypes.SubscribeReq) topicsTypes.Subscrib
 	return resp
 }
 
-func (mT *provider) UnSubscribe(req topicsTypes.UnSubscribeReq) topicsTypes.UnSubscribeResp {
+func (mT *provider) UnSubscribe(req topics.UnSubscribeReq) topics.UnSubscribeResp {
 	cAllocated := false
 
 	if req.Chan == nil {
 		cAllocated = true
-		req.Chan = make(chan topicsTypes.UnSubscribeResp)
+		req.Chan = make(chan topics.UnSubscribeResp)
 	}
 
 	mT.unSubIn <- req
@@ -167,7 +167,7 @@ func (mT *provider) UnSubscribe(req topicsTypes.UnSubscribeReq) topicsTypes.UnSu
 func (mT *provider) Publish(m interface{}) error {
 	msg, ok := m.(*mqttp.Publish)
 	if !ok {
-		return topicsTypes.ErrUnexpectedObjectType
+		return topics.ErrUnexpectedObjectType
 	}
 	mT.inbound <- msg
 
@@ -257,10 +257,10 @@ func (mT *provider) subscriber() {
 	mT.wgPublisherStarted.Done()
 
 	for req := range mT.subIn {
-		var resp topicsTypes.SubscribeResp
+		var resp topics.SubscribeResp
 
 		if req.S == nil || req.Params == nil {
-			resp.Err = topicsTypes.ErrInvalidArgs
+			resp.Err = topics.ErrInvalidArgs
 		} else {
 			if req.Params.Ops.QoS() > mqttp.QoS2 {
 				resp.Err = mqttp.ErrInvalidQoS
@@ -289,7 +289,7 @@ func (mT *provider) unSubscriber() {
 	mT.wgPublisherStarted.Done()
 
 	for req := range mT.unSubIn {
-		req.Chan <- topicsTypes.UnSubscribeResp{Err: mT.subscriptionRemove(req.Filter, req.S)}
+		req.Chan <- topics.UnSubscribeResp{Err: mT.subscriptionRemove(req.Filter, req.S)}
 	}
 }
 

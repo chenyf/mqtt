@@ -25,7 +25,7 @@ import (
 	"github.com/chenyf/mqtt/connection"
 	"github.com/chenyf/mqtt/subscriber"
 	"github.com/chenyf/mqtt/systree"
-	topicsTypes "github.com/chenyf/mqtt/topics/types"
+	"github.com/chenyf/mqtt/topics"
 	"github.com/chenyf/mqtt/transport"
 	"github.com/chenyf/mqtt/types"
 )
@@ -39,7 +39,7 @@ type subscriberConfig struct {
 // Config manager configuration
 type Config struct {
 	configuration.MqttConfig
-	TopicsMgr        topicsTypes.Provider
+	TopicsMgr        topics.Provider
 	Persist          persist.IFace
 	Systree          systree.Provider
 	OnReplaceAttempt func(string, bool)

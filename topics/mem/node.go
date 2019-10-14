@@ -7,12 +7,12 @@ import (
 	"github.com/chenyf/mqttapi/subscriber"
 
 	"github.com/chenyf/mqtt/systree"
-	topicsTypes "github.com/chenyf/mqtt/topics/types"
+	"github.com/chenyf/mqtt/topics"
 	"github.com/chenyf/mqtt/types"
 )
 
 type topicSubscriber struct {
-	s topicsTypes.Subscriber
+	s topics.Subscriber
 	p *subscriber.SubscriptionParams
 }
 
@@ -34,7 +34,7 @@ func (s *topicSubscriber) acquire() *publish {
 }
 
 type publish struct {
-	s   topicsTypes.Subscriber
+	s   topics.Subscriber
 	ops mqttp.SubscriptionOptions
 	qos mqttp.QosType
 	ids []uint32
@@ -102,7 +102,7 @@ func (mT *provider) leafSearchNode(levels []string) *node {
 	return root
 }
 
-func (mT *provider) subscriptionInsert(filter string, sub topicsTypes.Subscriber, p *subscriber.SubscriptionParams) bool {
+func (mT *provider) subscriptionInsert(filter string, sub topics.Subscriber, p *subscriber.SubscriptionParams) bool {
 	levels := strings.Split(filter, "/")
 
 	root := mT.leafInsertNode(levels)
@@ -123,14 +123,14 @@ func (mT *provider) subscriptionInsert(filter string, sub topicsTypes.Subscriber
 	return exists
 }
 
-func (mT *provider) subscriptionRemove(topic string, sub topicsTypes.Subscriber) error {
+func (mT *provider) subscriptionRemove(topic string, sub topics.Subscriber) error {
 	levels := strings.Split(topic, "/")
 
 	var err error
 
 	root := mT.leafSearchNode(levels)
 	if root == nil {
-		return topicsTypes.ErrNotFound
+		return topics.ErrNotFound
 	}
 
 	// path matching the topic exists.
@@ -144,7 +144,7 @@ func (mT *provider) subscriptionRemove(topic string, sub topicsTypes.Subscriber)
 		if _, ok := root.subs[id]; ok {
 			delete(root.subs, id)
 		} else {
-			err = topicsTypes.ErrNotFound
+			err = topics.ErrNotFound
 		}
 	}
 
@@ -172,11 +172,11 @@ func subscriptionRecurseSearch(root *node, levels []string, publishID uintptr, p
 		// leaf level of the topic
 		// get all subscribers and return
 		root.getSubscribers(publishID, p)
-		if n, ok := root.children[topicsTypes.MWC]; ok {
+		if n, ok := root.children[topics.MWC]; ok {
 			n.getSubscribers(publishID, p)
 		}
 	} else {
-		if n, ok := root.children[topicsTypes.MWC]; ok && len(levels[0]) != 0 {
+		if n, ok := root.children[topics.MWC]; ok && len(levels[0]) != 0 {
 			n.getSubscribers(publishID, p)
 		}
 
@@ -184,7 +184,7 @@ func subscriptionRecurseSearch(root *node, levels []string, publishID uintptr, p
 			subscriptionRecurseSearch(n, levels[1:], publishID, p)
 		}
 
-		if n, ok := root.children[topicsTypes.SWC]; ok {
+		if n, ok := root.children[topics.SWC]; ok {
 			subscriptionRecurseSearch(n, levels[1:], publishID, p)
 		}
 	}
@@ -215,7 +215,7 @@ func (mT *provider) retainRemove(topic string) error {
 
 	root := mT.leafSearchNode(levels)
 	if root == nil {
-		return topicsTypes.ErrNotFound
+		return topics.ErrNotFound
 	}
 
 	root.retained = nil
@@ -242,16 +242,16 @@ func retainRecurseSearch(root *node, levels []string, retained *[]*mqttp.Publish
 	if len(levels) == 0 {
 		// leaf level of the topic
 		root.getRetained(retained)
-		if n, ok := root.children[topicsTypes.MWC]; ok {
+		if n, ok := root.children[topics.MWC]; ok {
 			n.allRetained(retained)
 		}
 	} else {
 		switch levels[0] {
-		case topicsTypes.MWC:
+		case topics.MWC:
 			// If '#', add all retained messages starting this node
 			root.allRetained(retained)
 			return
-		case topicsTypes.SWC:
+		case topics.SWC:
 			// If '+', check all nodes at this level. Next levels must be matched.
 			for _, n := range root.children {
 				retainRecurseSearch(n, levels[1:], retained)
@@ -268,7 +268,7 @@ func (mT *provider) retainSearch(filter string, retained *[]*mqttp.Publish) {
 	levels := strings.Split(filter, "/")
 	level := levels[0]
 
-	if level == topicsTypes.MWC {
+	if level == topics.MWC {
 		for t, n := range mT.root.children {
 			if t != "" && !strings.HasPrefix(t, "$") {
 				n.allRetained(retained)

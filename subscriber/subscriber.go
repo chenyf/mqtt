@@ -10,14 +10,14 @@ import (
 	"github.com/chenyf/mqttapi/subscriber"
 
 	"github.com/chenyf/mqtt/configuration"
-	topicsTypes "github.com/chenyf/mqtt/topics/types"
+	"github.com/chenyf/mqtt/topics"
 )
 
 // Config subscriber config options
 type Config struct {
 	ID             string
 	OfflinePublish subscriber.Publisher
-	Topics         topicsTypes.ISubscriber
+	Topics         topics.ISubscriber
 	Version        mqttp.ProtocolVersion
 }
 
@@ -28,8 +28,8 @@ type Type struct {
 	publisher     subscriber.Publisher
 	log           *zap.SugaredLogger
 	access        sync.WaitGroup
-	subSignal     chan topicsTypes.SubscribeResp
-	unSubSignal   chan topicsTypes.UnSubscribeResp
+	subSignal     chan topics.SubscribeResp
+	unSubSignal   chan topics.UnSubscribeResp
 	Config
 }
 
@@ -41,8 +41,8 @@ func New(c Config) *Type {
 		subscriptions: make(subscriber.Subscriptions),
 		Config:        c,
 		log:           configuration.GetLogger().Named("subscriber"),
-		subSignal:     make(chan topicsTypes.SubscribeResp),
-		unSubSignal:   make(chan topicsTypes.UnSubscribeResp),
+		subSignal:     make(chan topics.SubscribeResp),
+		unSubSignal:   make(chan topics.UnSubscribeResp),
 	}
 
 	p.publisher = c.OfflinePublish
@@ -88,7 +88,7 @@ func (s *Type) Subscriptions() subscriber.Subscriptions {
 
 // Subscribe to given topic
 func (s *Type) Subscribe(topic string, params *subscriber.SubscriptionParams) ([]*mqttp.Publish, error) {
-	resp := s.Topics.Subscribe(topicsTypes.SubscribeReq{
+	resp := s.Topics.Subscribe(topics.SubscribeReq{
 		Filter: topic,
 		Params: params,
 		S:      s,
@@ -108,7 +108,7 @@ func (s *Type) Subscribe(topic string, params *subscriber.SubscriptionParams) ([
 
 // UnSubscribe from given topic
 func (s *Type) UnSubscribe(topic string) error {
-	resp := s.Topics.UnSubscribe(topicsTypes.UnSubscribeReq{
+	resp := s.Topics.UnSubscribe(topics.UnSubscribeReq{
 		Filter: topic,
 		S:      s,
 		Chan:   s.unSubSignal,

@@ -17,7 +17,6 @@ import (
 	"github.com/chenyf/mqtt/configuration"
 	"github.com/chenyf/mqtt/systree"
 	"github.com/chenyf/mqtt/topics"
-	topicsTypes "github.com/chenyf/mqtt/topics/types"
 	"github.com/chenyf/mqtt/transport"
 	"github.com/chenyf/mqtt/types"
 )
@@ -75,7 +74,7 @@ type server struct {
 	Config
 	sessionsMgr *clients.Manager
 	log         *zap.SugaredLogger
-	topicsMgr   topicsTypes.Provider
+	topicsMgr   topics.Provider
 	sysTree     systree.Provider
 	quit        chan struct{}
 	lock        sync.Mutex
@@ -94,6 +93,7 @@ type server struct {
 }
 
 var _ plugin.Messaging = (*server)(nil)
+
 
 // NewServer allocate server object
 func NewServer(config Config) (Server, error) {
@@ -128,13 +128,13 @@ func NewServer(config Config) (Server, error) {
 
 	persisRetained, _ = s.Persistence.Retained()
 
-	topicsConfig := topicsTypes.NewMemConfig()
+	topicsConfig := topics.NewMemConfig()
 
 	topicsConfig.Stat = s.sysTree.Topics()
 	topicsConfig.Persist = persisRetained
 	topicsConfig.OverlappingSubscriptions = s.MQTT.Options.SubsOverlap
 
-	if s.topicsMgr, err = topics.New(topicsConfig); err != nil {
+	if s.topicsMgr, err = NewTopicManager(topicsConfig); err != nil {
 		s.log.Errorf("cannot create topics")
 		return nil, err
 	}

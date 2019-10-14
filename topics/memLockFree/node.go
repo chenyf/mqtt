@@ -9,12 +9,12 @@ import (
 	"github.com/chenyf/mqttapi/subscriber"
 
 	"github.com/chenyf/mqtt/systree"
-	topicsTypes "github.com/chenyf/mqtt/topics/types"
+	"github.com/chenyf/mqtt/topics"
 	"github.com/chenyf/mqtt/types"
 )
 
 type topicSubscriber struct {
-	s topicsTypes.Subscriber
+	s topics.Subscriber
 	p *subscriber.SubscriptionParams
 	sync.RWMutex
 }
@@ -35,7 +35,7 @@ func (s *topicSubscriber) acquire() *publish {
 }
 
 type publish struct {
-	s   topicsTypes.Subscriber
+	s   topics.Subscriber
 	ops mqttp.SubscriptionOptions
 	qos mqttp.QosType
 	ids []uint32
@@ -116,7 +116,7 @@ func (mT *provider) leafSearchNode(levels []string) *node {
 	return root
 }
 
-func (mT *provider) subscriptionInsert(filter string, sub topicsTypes.Subscriber, p *subscriber.SubscriptionParams) bool {
+func (mT *provider) subscriptionInsert(filter string, sub topics.Subscriber, p *subscriber.SubscriptionParams) bool {
 	levels := strings.Split(filter, "/")
 
 	leaf := mT.leafInsertNode(levels)
@@ -138,14 +138,14 @@ func (mT *provider) subscriptionInsert(filter string, sub topicsTypes.Subscriber
 	return false
 }
 
-func (mT *provider) subscriptionRemove(topic string, sub topicsTypes.Subscriber) error {
+func (mT *provider) subscriptionRemove(topic string, sub topics.Subscriber) error {
 	levels := strings.Split(topic, "/")
 
 	var err error
 
 	leaf := mT.leafSearchNode(levels)
 	if leaf == nil {
-		return topicsTypes.ErrNotFound
+		return topics.ErrNotFound
 	}
 
 	// path matching the topic exists.
@@ -160,7 +160,7 @@ func (mT *provider) subscriptionRemove(topic string, sub topicsTypes.Subscriber)
 		})
 	} else {
 		if _, ok := leaf.subs.Load(sub.Hash()); !ok {
-			err = topicsTypes.ErrNotFound
+			err = topics.ErrNotFound
 		} else {
 			atomic.AddInt32(&leaf.subsCount, -1)
 			leaf.subs.Delete(sub.Hash())
@@ -207,11 +207,11 @@ func (mT *provider) subscriptionRecurseSearch(root *node, levels []string, publi
 		// leaf level of the topic
 		// get all subscribers and return
 		mT.nodeSubscribers(root, publishID, p)
-		if n, ok := root.children.Load(topicsTypes.MWC); ok {
+		if n, ok := root.children.Load(topics.MWC); ok {
 			mT.nodeSubscribers(n.(*node), publishID, p)
 		}
 	} else {
-		if n, ok := root.children.Load(topicsTypes.MWC); ok && len(levels[0]) != 0 {
+		if n, ok := root.children.Load(topics.MWC); ok && len(levels[0]) != 0 {
 			mT.nodeSubscribers(n.(*node), publishID, p)
 		}
 
@@ -219,7 +219,7 @@ func (mT *provider) subscriptionRecurseSearch(root *node, levels []string, publi
 			mT.subscriptionRecurseSearch(n.(*node), levels[1:], publishID, p)
 		}
 
-		if n, ok := root.children.Load(topicsTypes.SWC); ok {
+		if n, ok := root.children.Load(topics.SWC); ok {
 			mT.subscriptionRecurseSearch(n.(*node), levels[1:], publishID, p)
 		}
 	}
@@ -251,7 +251,7 @@ func (mT *provider) retainRemove(topic string) error {
 
 	root := mT.leafSearchNode(levels)
 	if root == nil {
-		return topicsTypes.ErrNotFound
+		return topics.ErrNotFound
 	}
 
 	root.retained.Store(retainer{})
@@ -265,17 +265,17 @@ func retainRecurseSearch(root *node, levels []string, retained *[]*mqttp.Publish
 	if len(levels) == 0 {
 		// leaf level of the topic
 		root.getRetained(retained)
-		if value, ok := root.children.Load(topicsTypes.MWC); ok {
+		if value, ok := root.children.Load(topics.MWC); ok {
 			n := value.(*node)
 			n.allRetained(retained)
 		}
 	} else {
 		switch levels[0] {
-		case topicsTypes.MWC:
+		case topics.MWC:
 			// If '#', add all retained messages starting this node
 			root.allRetained(retained)
 			return
-		case topicsTypes.SWC:
+		case topics.SWC:
 			// If '+', check all nodes at this level. Next levels must be matched.
 			root.children.Range(func(key, value interface{}) bool {
 				retainRecurseSearch(value.(*node), levels[1:], retained)
@@ -294,7 +294,7 @@ func (mT *provider) retainSearch(filter string, retained *[]*mqttp.Publish) {
 	levels := strings.Split(filter, "/")
 	level := levels[0]
 
-	if level == topicsTypes.MWC {
+	if level == topics.MWC {
 		mT.root.children.Range(func(key, value interface{}) bool {
 			t := key.(string)
 			n := value.(*node)
